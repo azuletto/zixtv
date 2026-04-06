@@ -1,0 +1,158 @@
+
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    
+    overflow-y: auto;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-zinc-950 text-white;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: 100vh;
+  }
+
+  
+  body.no-scroll {
+    overflow: hidden;
+  }
+
+  
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #3f3f46;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #52525b;
+  }
+}
+
+@layer components {
+  
+  .main-container {
+    @apply relative w-full h-screen overflow-hidden;
+  }
+
+  
+  .content-area {
+    @apply overflow-y-auto overflow-x-hidden h-full;
+    scrollbar-width: thin;
+  }
+
+  
+  .sidebar-scroll {
+    @apply overflow-y-auto overflow-x-hidden;
+    scrollbar-width: thin;
+  }
+
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  
+  .category-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #3f3f46 #1f1f23;
+  }
+  
+  .category-scroll::-webkit-scrollbar {
+    height: 4px;
+  }
+  
+  .category-scroll::-webkit-scrollbar-track {
+    background: #1f1f23;
+    border-radius: 2px;
+  }
+  
+  .category-scroll::-webkit-scrollbar-thumb {
+    background: #3f3f46;
+    border-radius: 2px;
+  }
+  
+  .category-scroll::-webkit-scrollbar-thumb:hover {
+    background: #52525b;
+  }
+
+  
+  .page-transition-enter {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  
+  .page-transition-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 200ms, transform 200ms;
+  }
+  
+  .page-transition-exit {
+    opacity: 1;
+  }
+  
+  .page-transition-exit-active {
+    opacity: 0;
+    transition: opacity 200ms;
+  }
+}
+
+.category-row-container {
+  overflow: visible !important;
+  position: relative;
+  width: 100%;
+}
+
+.category-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overflow-y: visible !important;
+}
+
+.category-scroll > * {
+  flex-shrink: 0;
+}
+
+.relative {
+  overflow: visible !important;
+}
+
+.content-area {
+  overflow-x: visible !important;
+}
+
+@media (max-width: 640px) {
+  .category-scroll {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
