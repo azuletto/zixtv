@@ -44,6 +44,7 @@
 | **🌐 General** | Language - English | ❌ Not Done |
 | **📺 Live** | Truncate to Change Quality | ❌ Not Done |
 | **🔒 General** | Parental Control | ❌ Not Done |
+| **🔒 General** | Playlist Custumization (Like, Add, Etc..) | ❌ Not Done |
 | **📜 General** | History | ❌ Not Done |
 
 ## ❤️ Support the Project
