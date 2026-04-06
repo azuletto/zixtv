@@ -2,7 +2,13 @@
 
 export class XtreamParser {
   async fetchJsonViaProxy(targetUrl) {
-    const response = await fetch(`/api/proxy/fetch?url=${encodeURIComponent(targetUrl)}`);
+    const endpoints = ['/api/proxy/fetch', '/api/fetch'];
+    let response = null;
+
+    for (const endpoint of endpoints) {
+      response = await fetch(`${endpoint}?url=${encodeURIComponent(targetUrl)}`);
+      if (response.status !== 404) break;
+    }
 
     if (!response.ok) {
       throw new Error(`Falha ao conectar com o servidor: ${response.status}`);

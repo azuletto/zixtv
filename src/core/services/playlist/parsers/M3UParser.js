@@ -75,13 +75,33 @@ export class M3UParser {
       throw new Error('Fonte de playlist invalida. Use uma URL http/https ou conteudo M3U valido.');
     }
 
-    const response = await fetch('/api/proxy/m3u', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ url: source })
-    });
+    const endpoints = ['/api/proxy/m3u', '/api/m3u'];
+    let response = null;
+    let lastError = null;
+
+    for (const endpoint of endpoints) {
+      try {
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ url: source })
+        });
+
+        if (response.status === 404) {
+          continue;
+        }
+
+        break;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (!response) {
+      throw new Error(lastError?.message || 'Falha ao conectar com o proxy de playlist.');
+    }
 
     if (!response.ok) {
       let message = `Falha no proxy (${response.status})`;
