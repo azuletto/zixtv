@@ -1,6 +1,6 @@
-
+﻿
 import React from 'react';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/outline';
+import { ChevronLeftIcon, ChevronRightIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
   if (totalPages <= 1) return null;
@@ -60,3 +60,4 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 };
 
 export default Pagination;
+

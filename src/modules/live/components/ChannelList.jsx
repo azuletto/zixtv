@@ -1,7 +1,7 @@
-
+﻿
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { PlayIcon } from '@heroicons/react/outline';
+import { PlayIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 
 const ChannelList = ({ channels, onSelectChannel }) => {
   const [visibleChannels, setVisibleChannels] = useState([]);
@@ -92,3 +92,4 @@ const ChannelList = ({ channels, onSelectChannel }) => {
 };
 
 export default ChannelList;
+

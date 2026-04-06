@@ -43,7 +43,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['framer-motion', '@heroicons/react', '@headlessui/react'],
+          ui: ['framer-motion', '@headlessui/react', 'lucide-react'],
           player: ['hls.js'], 
           utils: ['date-fns', 'lodash', 'zustand']
         }

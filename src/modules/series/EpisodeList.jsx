@@ -1,7 +1,7 @@
-
+﻿
 
 import React from 'react';
-import { PlayIcon } from '@heroicons/react/outline';
+import { PlayIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 
 const FALLBACK_THUMB = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="480" height="270" viewBox="0 0 480 270"%3E%3Crect width="480" height="270" fill="%2318181b"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="16" fill="%23888888"%3ESem Imagem%3C/text%3E%3C/svg%3E';
 
@@ -39,7 +39,7 @@ const EpisodeItem = ({ episode, index, onSelect }) => {
       <div className="relative w-40 h-24 flex-shrink-0">
         <img
           src={thumb}
-          alt={episode.name || `Episódio ${episode.sequence || episode.episode}`}
+          alt={episode.name || `EpisÃ³dio ${episode.sequence || episode.episode}`}
           className="w-full h-full object-cover rounded"
           loading="lazy"
           onError={(e) => {
@@ -53,7 +53,7 @@ const EpisodeItem = ({ episode, index, onSelect }) => {
 
       <div className="flex-1">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-white font-bold line-clamp-1">{episode.name || `Episódio ${episode.sequence || episode.episode}`}</h3>
+          <h3 className="text-white font-bold line-clamp-1">{episode.name || `EpisÃ³dio ${episode.sequence || episode.episode}`}</h3>
           {episode.metadata?.duration && (
             <span className="text-gray-400 text-sm">
               {Math.floor(episode.metadata.duration / 60)} min
@@ -62,7 +62,7 @@ const EpisodeItem = ({ episode, index, onSelect }) => {
         </div>
         
         <p className="text-gray-400 text-sm line-clamp-2">
-          {episode.description || 'Descrição não disponível'}
+          {episode.description || 'DescriÃ§Ã£o nÃ£o disponÃ­vel'}
         </p>
 
         {rating && rating !== 'N/A' && (
@@ -83,3 +83,5 @@ const EpisodeItem = ({ episode, index, onSelect }) => {
 };
 
 export default EpisodeList;
+
+

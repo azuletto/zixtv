@@ -1,4 +1,4 @@
-
+﻿
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,7 +9,7 @@ import MediaCard from '../../shared/components/MediaCard/MediaCard';
 import SeriesDetails from './SeriesDetails';
 import CategorySection from '../../shared/components/CategorySection/CategorySection';
 import ViewModeToggle from '../../shared/components/ViewModeToggle/ViewModeToggle';
-import { SearchIcon, ArrowLeftIcon, XIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from '@heroicons/react/outline';
+import { SearchIcon, ArrowLeftIcon, XIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 
 const cleanTitle = (title) => {
   if (!title) return '';
@@ -137,10 +137,10 @@ const SeriesScreen = () => {
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl text-white mb-4">
-            Nenhuma série disponível
+            Nenhuma sÃ©rie disponÃ­vel
           </h2>
           <p className="text-gray-400">
-            Adicione uma playlist com séries para começar
+            Adicione uma playlist com sÃ©ries para comeÃ§ar
           </p>
         </div>
       </div>
@@ -156,7 +156,7 @@ const SeriesScreen = () => {
             className="inline-flex items-center gap-2 text-zinc-300 hover:text-white transition-colors"
           >
             <ArrowLeftIcon className="w-4 h-4" />
-            Voltar para séries
+            Voltar para sÃ©ries
           </button>
         </div>
         <SeriesDetails series={selectedSeries} />
@@ -173,7 +173,7 @@ const SeriesScreen = () => {
       <div className="relative z-10 p-6">
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold text-white">Séries</h1>
+            <h1 className="text-3xl font-bold text-white">SÃ©ries</h1>
             <ViewModeToggle viewMode={viewMode} setViewMode={setViewMode} />
           </div>
 
@@ -182,7 +182,7 @@ const SeriesScreen = () => {
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
             <input
               type="text"
-              placeholder="Buscar séries..."
+              placeholder="Buscar sÃ©ries..."
               value={searchQuery}
               onChange={(e) => syncSearch(e.target.value)}
               className="w-full bg-zinc-900 border border-zinc-800 text-white rounded-lg pl-10 pr-10 py-2.5 focus:outline-none focus:border-red-600 transition-colors"
@@ -236,7 +236,7 @@ const SeriesScreen = () => {
 
           {viewMode === 'grid' && (
             <div className="mt-4 text-sm text-zinc-500">
-              {visibleCount} {visibleCount === 1 ? 'série encontrada' : 'séries encontradas'}
+              {visibleCount} {visibleCount === 1 ? 'sÃ©rie encontrada' : 'sÃ©ries encontradas'}
             </div>
           )}
         </div>
@@ -335,3 +335,5 @@ const SeriesScreen = () => {
 };
 
 export default SeriesScreen;
+
+

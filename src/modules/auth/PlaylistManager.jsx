@@ -1,4 +1,4 @@
-
+﻿
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,7 +9,7 @@ import {
   RefreshIcon,
   DocumentDuplicateIcon,
   DownloadIcon
-} from '@heroicons/react/outline';
+} from '/src/shared/icons/heroiconsOutlineCompat';
 import { usePlaylist } from '../../shared/hooks/usePlaylist';
 import AddPlaylistModal from '../../shared/components/Modal/AddPlaylistModal';
 import ActionModal from '../../shared/components/Modal/ActionModal';
@@ -36,7 +36,7 @@ const PlaylistManager = () => {
     const newPlaylist = {
       ...playlist,
       id: Date.now().toString(),
-      name: `${playlist.name} (cópia)`,
+      name: `${playlist.name} (cÃ³pia)`,
       createdAt: new Date().toISOString()
     };
     
@@ -97,7 +97,7 @@ const PlaylistManager = () => {
             </p>
           </div>
           <div className="bg-gray-800 rounded-lg p-4">
-            <p className="text-gray-400 text-sm">Séries</p>
+            <p className="text-gray-400 text-sm">SÃ©ries</p>
             <p className="text-2xl font-bold text-white">
               {playlists.reduce((acc, p) => acc + (p.series?.length || 0), 0)}
             </p>
@@ -182,7 +182,7 @@ const PlaylistManager = () => {
                   </div>
                   <div className="text-center">
                     <p className="text-xl font-bold text-purple-400">{stats.series}</p>
-                    <p className="text-xs text-gray-400">Séries</p>
+                    <p className="text-xs text-gray-400">SÃ©ries</p>
                   </div>
                 </div>
 
@@ -279,3 +279,5 @@ const PlaylistManager = () => {
 };
 
 export default PlaylistManager;
+
+

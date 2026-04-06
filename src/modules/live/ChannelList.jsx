@@ -1,6 +1,6 @@
-
+﻿
 import React, { memo, useState, useEffect, useCallback, useRef } from 'react';
-import { PlayIcon } from '@heroicons/react/outline';
+import { PlayIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 
 const ChannelList = memo(({ channels, onSelectChannel }) => {
   const [visibleCount, setVisibleCount] = useState(50);
@@ -92,3 +92,4 @@ const ChannelListItem = memo(({ channel, onSelect, isLast, lastRef }) => {
 });
 
 export default ChannelList;
+

@@ -1,8 +1,8 @@
-
+﻿
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { XIcon } from '@heroicons/react/outline';
+import { XIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 import { tmdbService } from '../../core/services/tmdb/TMDBService';
 
 const extractTMDBIdFromUrl = (url) => {
@@ -105,7 +105,7 @@ const CinemaMode = ({ title, metadata, type, tmdbData: prefetchedTMDBData, onExi
     };
   }, [tmdbType, title, metadata, prefetchedTMDBData]);
 
-  const displayDescription = tmdbData?.overview || metadata?.description || 'Sem descrição disponível';
+  const displayDescription = tmdbData?.overview || metadata?.description || 'Sem descriÃ§Ã£o disponÃ­vel';
   const displayGenre = tmdbData?.genre || metadata?.genre || null;
   const displayYear = tmdbData?.year || metadata?.year || null;
   const displayRating = tmdbData?.rating || metadata?.rating || null;
@@ -126,7 +126,7 @@ const CinemaMode = ({ title, metadata, type, tmdbData: prefetchedTMDBData, onExi
             {showTMDBSkeleton ? (
               <div className="mt-2 h-4 w-44 animate-pulse rounded bg-zinc-700/70" />
             ) : (
-              <p className="text-gray-300">{displayGenre || '-'} • {displayYear || '-'}</p>
+              <p className="text-gray-300">{displayGenre || '-'} â€¢ {displayYear || '-'}</p>
             )}
           </div>
           <button
@@ -171,3 +171,5 @@ const CinemaMode = ({ title, metadata, type, tmdbData: prefetchedTMDBData, onExi
 };
 
 export default CinemaMode;
+
+

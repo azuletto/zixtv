@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -11,7 +11,7 @@ import {
   FilmIcon,
   UsersIcon,
   TrendingUpIcon
-} from '@heroicons/react/outline';
+} from '/src/shared/icons/heroiconsOutlineCompat';
 
 import logoZixTV from '../../../assets/logo-zix-tv.png';
 
@@ -54,7 +54,7 @@ const WelcomeScreen = () => {
   const stats = [
     { icon: <PlayIcon className="w-3.5 h-3.5" />, label: 'Canais' },
     { icon: <FilmIcon className="w-3.5 h-3.5" />, label: 'Filmes' },
-    { icon: <UsersIcon className="w-3.5 h-3.5" />, label: 'Séries' },
+    { icon: <UsersIcon className="w-3.5 h-3.5" />, label: 'SÃ©ries' },
     { icon: <TrendingUpIcon className="w-3.5 h-3.5" />, label: 'HD/4K' }
   ];
 
@@ -108,7 +108,7 @@ const WelcomeScreen = () => {
                 <span className="text-red-500">entretenimento</span>
               </h2>
               <p className="text-zinc-300 text-sm leading-relaxed">
-                Adicione sua playlist e tenha acesso a canais, filmes e séries.
+                Adicione sua playlist e tenha acesso a canais, filmes e sÃ©ries.
               </p>
             </div>
 
@@ -206,3 +206,4 @@ const WelcomeScreen = () => {
 };
 
 export default WelcomeScreen;
+

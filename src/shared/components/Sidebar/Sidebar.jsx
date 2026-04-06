@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useCallback, useMemo, useTransition, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
@@ -18,7 +18,7 @@ import {
   GlobeAltIcon,
   FolderIcon,
   MenuIcon
-} from '@heroicons/react/outline';
+} from '/src/shared/icons/heroiconsOutlineCompat';
 
 import { 
   HomeIcon as HomeSolidIcon,
@@ -26,7 +26,7 @@ import {
   FilmIcon as FilmSolidIcon,
   CollectionIcon as CollectionSolidIcon,
   LightningBoltIcon as LightningBoltSolidIcon
-} from '@heroicons/react/solid';
+} from '/src/shared/icons/heroiconsSolidCompat';
 
 import AddPlaylistModal from '../Modal/AddPlaylistModal';
 import logoZixTV from '../../../assets/logo-zix-tv.png';
@@ -193,14 +193,14 @@ const Sidebar = () => {
   const { playlists, activePlaylist, selectPlaylist } = usePlaylist();
 
   const menuItems = useMemo(() => [
-    { label: 'Início', path: '/', icon: HomeIcon, solidIcon: HomeSolidIcon },
+    { label: 'InÃ­cio', path: '/', icon: HomeIcon, solidIcon: HomeSolidIcon },
     { label: 'Ao Vivo', path: '/live', icon: LightningBoltIcon, solidIcon: LightningBoltSolidIcon },
     { label: 'Filmes', path: '/movies', icon: FilmIcon, solidIcon: FilmSolidIcon },
-    { label: 'Séries', path: '/series', icon: CollectionIcon, solidIcon: CollectionSolidIcon },
+    { label: 'SÃ©ries', path: '/series', icon: CollectionIcon, solidIcon: CollectionSolidIcon },
   ], []);
 
   const bottomItems = useMemo(() => [
-    { label: 'Configurações', path: '/settings', icon: CogIcon, solidIcon: CogSolidIcon },
+    { label: 'ConfiguraÃ§Ãµes', path: '/settings', icon: CogIcon, solidIcon: CogSolidIcon },
   ], []);
 
   const handleAddPlaylist = useCallback(() => setShowAddModal(true), []);
@@ -363,3 +363,4 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
+

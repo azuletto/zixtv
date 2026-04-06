@@ -1,6 +1,6 @@
-
+﻿
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
-import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from '@heroicons/react/outline';
+import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 import { useNavigate } from 'react-router-dom';
 import MediaCard from '../../../shared/components/MediaCard/MediaCard';
 
@@ -298,3 +298,4 @@ const CategoryRow = ({ title, items = [], type, categories = [], viewAllPath, on
 };
 
 export default CategoryRow;
+

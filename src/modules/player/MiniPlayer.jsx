@@ -1,8 +1,8 @@
-
+﻿
 
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { XIcon, ArrowsExpandIcon } from '@heroicons/react/outline';
+import { XIcon, ArrowsExpandIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 
 const MiniPlayer = ({ videoRef, title, onClose }) => {
   const containerRef = useRef(null);
@@ -95,10 +95,12 @@ const MiniPlayer = ({ videoRef, title, onClose }) => {
 
       {}
       <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/50">
-        <p className="text-white text-sm">Arraste para mover • Clique duas vezes para expandir</p>
+        <p className="text-white text-sm">Arraste para mover â€¢ Clique duas vezes para expandir</p>
       </div>
     </motion.div>
   );
 };
 
 export default MiniPlayer;
+
+

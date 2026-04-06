@@ -8,7 +8,7 @@ import {
   ShareIcon,
   ChevronDownIcon,
   XIcon
-} from '@heroicons/react/outline';
+} from '/src/shared/icons/heroiconsOutlineCompat';
 import { useMetadata } from '../../shared/hooks/useMetadata';
 import { tmdbService } from '../../core/services/tmdb/TMDBService';
 import CustomPlayer from '../player/CustomPlayer';
@@ -383,3 +383,5 @@ const MovieDetails = ({ movie, type = 'movie', onClose }) => {
 };
 
 export default MovieDetails;
+
+

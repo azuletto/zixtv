@@ -1,7 +1,7 @@
-
+﻿
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/outline';
+import { ChevronLeftIcon, ChevronRightIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 import MediaCard from '../MediaCard/MediaCard';
 
 const cleanTitle = (title) => {
@@ -159,3 +159,4 @@ const CategorySection = ({ title, items, type }) => {
 };
 
 export default CategorySection;
+

@@ -1,6 +1,6 @@
-
+﻿
 import React, { useState, useRef, useMemo, useCallback } from 'react';
-import { PlayIcon, PlusIcon, ThumbUpIcon } from '@heroicons/react/outline';
+import { PlayIcon, PlusIcon, ThumbUpIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 import { useUIStore } from '../../../app/store/uiStore';
 
 const FALLBACK_IMAGE = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'450\' viewBox=\'0 0 300 450\'%3E%3Crect width=\'300\' height=\'450\' fill=\'%2318181b\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'Arial\' font-size=\'14\' fill=\'%23666666\'%3ESem Imagem%3C/text%3E%3C/svg%3E';
@@ -57,10 +57,10 @@ const MediaCard = ({ item, type, imageFit = 'cover', imageScale = 0.94, imagePad
         return `${totalEpisodes} ${totalEpisodes === 1 ? 'episodio' : 'episodios'}`;
       }
 
-      return 'Série';
+      return 'SÃ©rie';
     }
     if (type === 'tmdb') {
-      const itemType = normalizedItem.type === 'movie' ? 'Filme' : normalizedItem.type === 'tv' ? 'Série' : '';
+      const itemType = normalizedItem.type === 'movie' ? 'Filme' : normalizedItem.type === 'tv' ? 'SÃ©rie' : '';
       return itemType;
     }
     return '';
@@ -111,7 +111,7 @@ const MediaCard = ({ item, type, imageFit = 'cover', imageScale = 0.94, imagePad
 
         {isEntertainment && formattedRating && formattedRating !== 'N/A' && (
           <div className="absolute top-2 right-2 bg-green-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full z-10 shadow-lg">
-            ★ {formattedRating}
+            â˜… {formattedRating}
           </div>
         )}
         
@@ -169,3 +169,4 @@ const MediaCard = ({ item, type, imageFit = 'cover', imageScale = 0.94, imagePad
 };
 
 export default React.memo(MediaCard);
+

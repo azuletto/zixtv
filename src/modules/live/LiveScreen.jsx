@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useMemo, lazy, Suspense, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -19,7 +19,7 @@ import {
   HeartIcon,
   CameraIcon,
   ChipIcon
-} from '@heroicons/react/outline';
+} from '/src/shared/icons/heroiconsOutlineCompat';
 import LoadingSpinner from '../../shared/components/Loaders/Spinner';
 
 const CustomPlayer = lazy(() => import('../player/CustomPlayer'));
@@ -52,7 +52,7 @@ const LazyImage = ({ src, alt, className, onError }) => {
   if (error || !src) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-red-600/20">
-        <span className="text-2xl">📺</span>
+        <span className="text-2xl">ðŸ“º</span>
       </div>
     );
   }
@@ -107,12 +107,12 @@ const CustomDropdown = ({ categories, selectedCategory, onSelect, totalChannels,
   const getCategoryIcon = (categoryName) => {
     const name = categoryName.toLowerCase();
     if (name.includes('esporte') || name.includes('sport')) return <LightningBoltIcon className="w-4 h-4" />;
-    if (name.includes('notícia') || name.includes('news')) return <GlobeAltIcon className="w-4 h-4" />;
+    if (name.includes('notÃ­cia') || name.includes('news')) return <GlobeAltIcon className="w-4 h-4" />;
     if (name.includes('filme') || name.includes('movie')) return <FilmIcon className="w-4 h-4" />;
-    if (name.includes('série') || name.includes('series')) return <CollectionIcon className="w-4 h-4" />;
+    if (name.includes('sÃ©rie') || name.includes('series')) return <CollectionIcon className="w-4 h-4" />;
     if (name.includes('internacional')) return <GlobeAltIcon className="w-4 h-4" />;
     if (name.includes('favorito') || name.includes('favorite')) return <HeartIcon className="w-4 h-4" />;
-    if (name.includes('documentário') || name.includes('documentary')) return <CameraIcon className="w-4 h-4" />;
+    if (name.includes('documentÃ¡rio') || name.includes('documentary')) return <CameraIcon className="w-4 h-4" />;
     if (name.includes('tecnologia') || name.includes('tech')) return <ChipIcon className="w-4 h-4" />;
     return <HomeIcon className="w-4 h-4" />;
   };
@@ -421,12 +421,12 @@ const LiveScreen = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center max-w-md mx-auto px-4">
-          <div className="text-6xl mb-4">📺</div>
+          <div className="text-6xl mb-4">ðŸ“º</div>
           <h2 className="text-2xl font-bold text-white mb-2">
             Nenhuma playlist selecionada
           </h2>
           <p className="text-gray-400">
-            Selecione uma playlist na barra lateral para começar
+            Selecione uma playlist na barra lateral para comeÃ§ar
           </p>
         </div>
       </div>
@@ -437,12 +437,12 @@ const LiveScreen = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center max-w-md mx-auto px-4">
-          <div className="text-6xl mb-4">📡</div>
+          <div className="text-6xl mb-4">ðŸ“¡</div>
           <h2 className="text-2xl font-bold text-white mb-2">
-            Nenhum canal disponível
+            Nenhum canal disponÃ­vel
           </h2>
           <p className="text-gray-400">
-            A playlist não contém canais ao vivo
+            A playlist nÃ£o contÃ©m canais ao vivo
           </p>
         </div>
       </div>
@@ -572,7 +572,7 @@ const LiveScreen = () => {
           {visibleItems_.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-400 text-sm">
-                {searchQuery ? `Nenhum canal encontrado para "${searchQuery}"` : 'Nenhum canal disponível'}
+                {searchQuery ? `Nenhum canal encontrado para "${searchQuery}"` : 'Nenhum canal disponÃ­vel'}
               </p>
             </div>
           ) : (
@@ -736,7 +736,7 @@ const ChannelCard = React.memo(({ channel, onSelect }) => {
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-red-600/20 rounded-md">
-              <span className="text-2xl">📺</span>
+              <span className="text-2xl">ðŸ“º</span>
             </div>
           )}
         </div>
@@ -781,7 +781,7 @@ const ChannelListItem = React.memo(({ channel, onSelect }) => {
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-red-600/20 rounded-lg">
-              <span className="text-xl">📺</span>
+              <span className="text-xl">ðŸ“º</span>
             </div>
           )}
         </div>
@@ -817,3 +817,4 @@ const ChannelListItem = React.memo(({ channel, onSelect }) => {
 });
 
 export default LiveScreen;
+

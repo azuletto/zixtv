@@ -1,6 +1,6 @@
-
+﻿
 import React from 'react';
-import { ViewGridIcon, ViewListIcon } from '@heroicons/react/outline';
+import { ViewGridIcon, ViewListIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 
 const ViewModeToggle = ({ viewMode, setViewMode }) => {
   return (
@@ -12,7 +12,7 @@ const ViewModeToggle = ({ viewMode, setViewMode }) => {
             ? 'bg-red-600 text-white'
             : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
         }`}
-        title="Visualização em grade"
+        title="VisualizaÃ§Ã£o em grade"
       >
         <ViewGridIcon className="w-4 h-4" />
       </button>
@@ -23,7 +23,7 @@ const ViewModeToggle = ({ viewMode, setViewMode }) => {
             ? 'bg-red-600 text-white'
             : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
         }`}
-        title="Visualização por categorias"
+        title="VisualizaÃ§Ã£o por categorias"
       >
         <ViewListIcon className="w-4 h-4" />
       </button>
@@ -32,3 +32,4 @@ const ViewModeToggle = ({ viewMode, setViewMode }) => {
 };
 
 export default ViewModeToggle;
+

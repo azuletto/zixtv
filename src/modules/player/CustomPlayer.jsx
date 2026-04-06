@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import Hls from 'hls.js';
 import mpegts from 'mpegts.js';
 import { motion, AnimatePresence } from 'framer-motion';
-import { XIcon } from '@heroicons/react/outline';
+import { XIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 import { usePlayerStore } from '../../app/store/playerStore';
 import { StorageService } from '../../core/services/storage/StorageService';
 import PlayerControls from './PlayerControls';
@@ -715,3 +715,5 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose }) => {
 };
 
 export default CustomPlayer;
+
+
