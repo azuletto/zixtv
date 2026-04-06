@@ -1,6 +1,22 @@
 
 
 export class XtreamParser {
+  async fetchJsonViaProxy(targetUrl) {
+    const response = await fetch(`/api/proxy/fetch?url=${encodeURIComponent(targetUrl)}`);
+
+    if (!response.ok) {
+      throw new Error(`Falha ao conectar com o servidor: ${response.status}`);
+    }
+
+    const text = await response.text();
+
+    try {
+      return JSON.parse(text);
+    } catch (_) {
+      throw new Error('Servidor não respondeu com JSON válido');
+    }
+  }
+
   async parse({ url, username, password, server }) {
     
     const serverUrl = url || server;
@@ -57,13 +73,9 @@ export class XtreamParser {
   }
 
   async fetchUserInfo(baseUrl, username, password) {
-    const response = await fetch(
+    const data = await this.fetchJsonViaProxy(
       `${baseUrl}/player_api.php?username=${username}&password=${password}`
     );
-    if (!response.ok) {
-      throw new Error(`Falha ao conectar com o servidor: ${response.status}`);
-    }
-    const data = await response.json();
     if (data.user_info === undefined) {
       throw new Error('Credenciais inválidas ou servidor não respondeu corretamente');
     }
@@ -71,26 +83,23 @@ export class XtreamParser {
   }
 
   async fetchLiveStreams(baseUrl, username, password) {
-    const response = await fetch(
+    const data = await this.fetchJsonViaProxy(
       `${baseUrl}/player_api.php?username=${username}&password=${password}&action=get_live_streams`
     );
-    const data = await response.json();
     return Array.isArray(data) ? data : [];
   }
 
   async fetchVodStreams(baseUrl, username, password) {
-    const response = await fetch(
+    const data = await this.fetchJsonViaProxy(
       `${baseUrl}/player_api.php?username=${username}&password=${password}&action=get_vod_streams`
     );
-    const data = await response.json();
     return Array.isArray(data) ? data : [];
   }
 
   async fetchSeries(baseUrl, username, password) {
-    const response = await fetch(
+    const data = await this.fetchJsonViaProxy(
       `${baseUrl}/player_api.php?username=${username}&password=${password}&action=get_series`
     );
-    const data = await response.json();
     return Array.isArray(data) ? data : [];
   }
 

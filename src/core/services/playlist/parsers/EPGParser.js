@@ -1,10 +1,28 @@
 ﻿
 
 export class EPGParser {
+  isLikelyXmlContent(source) {
+    if (typeof source !== 'string') return false;
+    const trimmed = source.trim();
+    if (!trimmed) return false;
+    return trimmed.startsWith('<') || trimmed.includes('<?xml');
+  }
+
+  async fetchViaProxy(targetUrl) {
+    const response = await fetch(`/api/proxy/fetch?url=${encodeURIComponent(targetUrl)}`);
+
+    if (!response.ok) {
+      throw new Error(`Falha ao carregar EPG (${response.status})`);
+    }
+
+    return response.text();
+  }
+
   async parse(source) {
     try {
-      const response = await fetch(source);
-      const xmlText = await response.text();
+      const xmlText = this.isLikelyXmlContent(source)
+        ? source
+        : await this.fetchViaProxy(source);
       
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(xmlText, 'text/xml');

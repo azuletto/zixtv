@@ -3,6 +3,17 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlayIcon, InformationCircleIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 
+const normalizeDescription = (value, fallback = 'Sinopse não disponível') => {
+  const raw = String(value || '').trim();
+  if (!raw) return fallback;
+
+  return raw
+    .replace(/descri(?:Ã§|�)o/gi, 'descrição')
+    .replace(/n(?:Ã£|�)o/gi, 'não')
+    .replace(/dispon(?:Ã­|�)vel/gi, 'disponível')
+    .trim() || fallback;
+};
+
 const HeroBanner = ({ items = [], onPlay, onMoreInfo }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
@@ -85,7 +96,7 @@ const HeroBanner = ({ items = [], onPlay, onMoreInfo }) => {
         </div>
 
         <p className="text-sm sm:text-base md:text-lg text-zinc-200 mb-4 sm:mb-6 md:mb-8 line-clamp-2 sm:line-clamp-3 max-w-2xl">
-          {currentItem.overview || 'Sinopse não disponível'}
+          {normalizeDescription(currentItem.overview)}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
