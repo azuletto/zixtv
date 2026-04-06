@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePlaylist } from '../../shared/hooks/usePlaylist';
@@ -49,8 +49,8 @@ const EmptyStateScreen = () => (
       }} />
     </div>
     <div className="relative z-10 text-center">
-      <p className="text-zinc-500 mb-2">Nenhum conteÃºdo em alta encontrado na sua playlist</p>
-      <p className="text-zinc-600 text-sm">Adicione mais conteÃºdo Ã  sua playlist</p>
+      <p className="text-zinc-500 mb-2">Nenhum conteúdo em alta encontrado na sua playlist</p>
+      <p className="text-zinc-600 text-sm">Adicione mais conteúdo à sua playlist</p>
     </div>
   </div>
 );
@@ -333,6 +333,57 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
     }
   };
 
+  const handleHeroPlay = (heroItem) => {
+    if (!heroItem) return;
+
+    if (heroItem.userItem && heroItem.userType === 'movie') {
+      navigate('/movies', { state: { autoPlayItem: heroItem.userItem, startInCinema: false, prefetchedTMDBData: heroItem } });
+      return;
+    }
+
+    if (heroItem.userItem && heroItem.userType === 'series') {
+      navigate('/series', { state: { openSeries: heroItem.userItem } });
+      return;
+    }
+
+    if (heroItem.userItem && heroItem.userType === 'live') {
+      navigate('/live', { state: { autoPlayChannel: heroItem.userItem } });
+      return;
+    }
+
+    if (heroItem.type === 'movie') {
+      navigate('/movies', { state: { autoPlayItem: heroItem, startInCinema: false, prefetchedTMDBData: heroItem } });
+      return;
+    }
+
+    if (heroItem.type === 'tv') {
+      navigate('/series', { state: { openSeries: heroItem } });
+    }
+  };
+
+  const handleHeroMoreInfo = (heroItem) => {
+    if (!heroItem) return;
+
+    if (heroItem.userItem && heroItem.userType === 'movie') {
+      navigate('/movies', { state: { autoPlayItem: heroItem.userItem, startInCinema: true, prefetchedTMDBData: heroItem } });
+      return;
+    }
+
+    if (heroItem.type === 'movie') {
+      navigate('/movies', { state: { autoPlayItem: heroItem, startInCinema: true, prefetchedTMDBData: heroItem } });
+      return;
+    }
+
+    if (heroItem.userItem && heroItem.userType === 'series') {
+      navigate('/series', { state: { openSeries: heroItem.userItem } });
+      return;
+    }
+
+    if (heroItem.type === 'tv') {
+      navigate('/series', { state: { openSeries: heroItem } });
+    }
+  };
+
   
   return (
     <div className="min-h-screen bg-zinc-950 w-full overflow-x-hidden">
@@ -345,7 +396,11 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
       </div>
 
       <div className="relative z-10 w-full">
-        <HeroBanner items={heroItems} />
+        <HeroBanner
+          items={heroItems}
+          onPlay={handleHeroPlay}
+          onMoreInfo={handleHeroMoreInfo}
+        />
         
         <div className="w-full py-6 space-y-8">
           {}
@@ -374,7 +429,7 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
           {}
           {userSeries.length > 0 && (
             <CategoryRow 
-              title="SÃ©ries"
+              title="Séries"
               type="series"
               items={userSeries}
               categories={seriesCategories}

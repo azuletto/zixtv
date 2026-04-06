@@ -1,4 +1,4 @@
-﻿
+
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
@@ -15,6 +15,19 @@ const normalizeTMDBType = (type) => {
   if (type === 'series' || type === 'tv') return 'tv';
   if (type === 'movie' || type === 'movies') return 'movie';
   return null;
+};
+
+const normalizeDescription = (value, fallback = 'Sem descrição disponível') => {
+  const raw = String(value || '').trim();
+  if (!raw) return fallback;
+
+  const fixed = raw
+    .replace(/descri(?:Ã§|�)o/gi, 'descrição')
+    .replace(/n(?:Ã£|�)o/gi, 'não')
+    .replace(/dispon(?:Ã­|�)vel/gi, 'disponível')
+    .trim();
+
+  return fixed || fallback;
 };
 
 const CinemaMode = ({ title, metadata, type, tmdbData: prefetchedTMDBData, onExit }) => {
@@ -44,19 +57,18 @@ const CinemaMode = ({ title, metadata, type, tmdbData: prefetchedTMDBData, onExi
     let cancelled = false;
 
     const loadTMDBData = async () => {
-      
-      if (!tmdbType) {
-        setIsFetchingTMDB(false);
-        if (!cancelled) setTmdbData(null);
-        return;
-      }
-
-      
-      if (tmdbType === 'tv' && prefetchedTMDBData) {
+      if (prefetchedTMDBData) {
         if (!cancelled) {
           setTmdbData(prefetchedTMDBData);
           setIsFetchingTMDB(false);
         }
+        return;
+      }
+
+      
+      if (!tmdbType) {
+        setIsFetchingTMDB(false);
+        if (!cancelled) setTmdbData(null);
         return;
       }
 
@@ -105,7 +117,7 @@ const CinemaMode = ({ title, metadata, type, tmdbData: prefetchedTMDBData, onExi
     };
   }, [tmdbType, title, metadata, prefetchedTMDBData]);
 
-  const displayDescription = tmdbData?.overview || metadata?.description || 'Sem descriÃ§Ã£o disponÃ­vel';
+  const displayDescription = normalizeDescription(tmdbData?.overview || metadata?.description || '');
   const displayGenre = tmdbData?.genre || metadata?.genre || null;
   const displayYear = tmdbData?.year || metadata?.year || null;
   const displayRating = tmdbData?.rating || metadata?.rating || null;
@@ -126,7 +138,7 @@ const CinemaMode = ({ title, metadata, type, tmdbData: prefetchedTMDBData, onExi
             {showTMDBSkeleton ? (
               <div className="mt-2 h-4 w-44 animate-pulse rounded bg-zinc-700/70" />
             ) : (
-              <p className="text-gray-300">{displayGenre || '-'} â€¢ {displayYear || '-'}</p>
+              <p className="text-gray-300">{displayGenre || '-'} - {displayYear || '-'}</p>
             )}
           </div>
           <button

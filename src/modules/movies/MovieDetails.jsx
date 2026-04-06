@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -249,7 +249,7 @@ const MovieDetails = ({ movie, type = 'movie', onClose }) => {
             <div>
               <h2 className="text-2xl font-bold text-white mb-4">Sinopse</h2>
               <p className={`text-gray-300 leading-relaxed ${!showMore && 'line-clamp-4'}`}>
-                {overview || 'Sinopse nÃ£o disponÃ­vel.'}
+                {overview || 'Sinopse não disponível.'}
               </p>
               {overview && overview.length > 300 && (
                 <button
@@ -292,7 +292,7 @@ const MovieDetails = ({ movie, type = 'movie', onClose }) => {
             {}
             {director && (
               <div>
-                <h3 className="text-lg font-bold text-white mb-2">DireÃ§Ã£o</h3>
+                <h3 className="text-lg font-bold text-white mb-2">Direção</h3>
                 <p className="text-gray-300">{director}</p>
               </div>
             )}
@@ -322,7 +322,7 @@ const MovieDetails = ({ movie, type = 'movie', onClose }) => {
           <div className="space-y-5">
             {genres.length > 0 && (
               <div>
-                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">GÃªneros</h3>
+                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Gêneros</h3>
                 <div className="flex flex-wrap gap-2">
                   {genres.map(genre => (
                     <span key={genre.id} className="bg-zinc-800 text-gray-300 px-3 py-1 rounded-full text-sm">
@@ -341,7 +341,7 @@ const MovieDetails = ({ movie, type = 'movie', onClose }) => {
             {displayData.status && (
               <div>
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Status</h3>
-                <p className="text-white">{displayData.status === 'Released' ? 'LanÃ§ado' : displayData.status}</p>
+                <p className="text-white">{displayData.status === 'Released' ? 'Lançado' : displayData.status}</p>
               </div>
             )}
 
@@ -361,7 +361,7 @@ const MovieDetails = ({ movie, type = 'movie', onClose }) => {
                   rel="noopener noreferrer"
                   className="text-red-500 hover:text-red-400 text-sm transition-colors"
                 >
-                  Visitar site â†’
+                  Visitar site
                 </a>
               </div>
             )}

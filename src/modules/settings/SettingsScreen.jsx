@@ -1,4 +1,4 @@
-﻿
+
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -21,7 +21,7 @@ import WelcomeScreen from '../home/components/WelcomeScreen';
 import ActionModal from '../../shared/components/Modal/ActionModal';
 
 const storageService = new StorageService();
-const COMING_SOON_HINT = 'SerÃ¡ adicionado em breve';
+const COMING_SOON_HINT = 'Será adicionado em breve';
 
 const ComingSoonHint = () => (
   <span className="group relative inline-flex items-center">
@@ -210,8 +210,8 @@ const SettingsScreen = () => {
 
   const handleClearHistory = async () => {
     setConfirmAction({
-      title: 'Limpar histÃ³rico',
-      message: 'Tem certeza que deseja limpar todo o histÃ³rico?',
+      title: 'Limpar histórico',
+      message: 'Tem certeza que deseja limpar todo o histórico?',
       danger: true,
       confirmText: 'Limpar',
       onConfirm: async () => {
@@ -258,7 +258,7 @@ const SettingsScreen = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
             </button>
-            <h1 className="text-3xl font-bold text-white">ConfiguraÃ§Ãµes</h1>
+            <h1 className="text-3xl font-bold text-white">Configurações</h1>
           </div>
         </div>
 
@@ -269,7 +269,7 @@ const SettingsScreen = () => {
             className="bg-amber-500/10 border border-amber-500/40 rounded-xl p-4"
           >
             <p className="text-amber-200 text-sm font-medium">
-              Aviso: a tela de configuraÃ§Ãµes ainda nao esta totalmente funcional e muitas opÃ§Ãµes podem mudar nas proximas versÃµes ou ainda nÃ£o foram implementadas.
+              Aviso: a tela de configurações ainda nao esta totalmente funcional e muitas opções podem mudar nas proximas versões ou ainda não foram implementadas.
             </p>
           </motion.div>
 
@@ -282,7 +282,7 @@ const SettingsScreen = () => {
             <div className="p-5">
               <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
                 <MoonIcon className="w-5 h-5 mr-2 text-red-500" />
-                AparÃªncia
+                Aparência
               </h2>
               
               <div className="space-y-3">
@@ -329,12 +329,12 @@ const SettingsScreen = () => {
             <div className="p-5">
               <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
                 <VideoCameraIcon className="w-5 h-5 mr-2 text-red-500" />
-                ReproduÃ§Ã£o
+                Reprodução
               </h2>
               
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-300 text-sm flex items-center">Qualidade padrÃ£o <ComingSoonHint /></span>
+                  <span className="text-zinc-300 text-sm flex items-center">Qualidade padrão <ComingSoonHint /></span>
                   <SettingsDropdown
                     disabled
                     value={settings.defaultQuality}
@@ -379,7 +379,7 @@ const SettingsScreen = () => {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-300 text-sm flex items-center">Volume padrÃ£o <ComingSoonHint /></span>
+                  <span className="text-zinc-300 text-sm flex items-center">Volume padrão <ComingSoonHint /></span>
                   <div className="flex items-center gap-3">
                     <VolumeUpIcon className="w-4 h-4 text-zinc-500" />
                     <input
@@ -398,7 +398,7 @@ const SettingsScreen = () => {
 
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <span className="text-zinc-300 text-sm">Tamanho do buffer de renderizaÃ§Ã£o</span>
+                    <span className="text-zinc-300 text-sm">Tamanho do buffer de renderização</span>
                     <p className="mt-1 text-xs text-zinc-500 max-w-sm">
                       Ajusta quanto o player tenta manter carregado para reduzir travamentos em canais ao vivo.
                     </p>
@@ -408,9 +408,9 @@ const SettingsScreen = () => {
                     onChange={(nextValue) => saveSettings('bufferProfile', nextValue)}
                     options={[
                       { value: 'small', label: 'Menor' },
-                      { value: 'balanced', label: 'MÃ©dio' },
+                      { value: 'balanced', label: 'Médio' },
                       { value: 'large', label: 'Maior' },
-                      { value: 'xlarge', label: 'MÃ¡ximo' }
+                      { value: 'xlarge', label: 'Máximo' }
                     ]}
                   />
                 </div>
@@ -436,9 +436,9 @@ const SettingsScreen = () => {
                 value={settings.language}
                 onChange={(nextValue) => saveSettings('language', nextValue)}
                 options={[
-                  { value: 'pt-BR', label: 'PortuguÃªs (Brasil)' },
+                  { value: 'pt-BR', label: 'Português (Brasil)' },
                   { value: 'en', label: 'English' },
-                  { value: 'es', label: 'EspaÃ±ol' }
+                  { value: 'es', label: 'Español' }
                 ]}
               />
             </div>
@@ -463,9 +463,9 @@ const SettingsScreen = () => {
                     <div className="flex-1">
                       <h3 className="text-white font-medium text-sm">{playlist.name}</h3>
                       <p className="text-zinc-500 text-xs">
-                        {playlist.type} â€¢ {playlist.live?.length || 0} canais â€¢{' '}
-                        {playlist.movies?.length || 0} filmes â€¢{' '}
-                        {playlist.series?.length || 0} sÃ©ries
+                        {playlist.type} - {playlist.live?.length || 0} canais -{' '}
+                        {playlist.movies?.length || 0} filmes -{' '}
+                        {playlist.series?.length || 0} séries
                       </p>
                     </div>
                     <button
@@ -525,7 +525,7 @@ const SettingsScreen = () => {
                 onClick={handleClearHistory}
                 className="mt-3 w-full bg-zinc-800 hover:bg-zinc-700 text-red-500 py-2.5 rounded-lg text-sm font-medium transition-colors"
               >
-                Limpar HistÃ³rico
+                Limpar Histórico
               </button>
             </div>
           </motion.div>
@@ -541,10 +541,10 @@ const SettingsScreen = () => {
               <h2 className="text-lg font-semibold text-white mb-2">ZixTV</h2>
               <p className="text-zinc-500 text-sm">v1.0.0 Alpha</p>
               <p className="text-zinc-500 text-sm mt-2">
-                Um organizador e player IPTV completo com interface moderna. Futuras atualizaÃ§Ãµes em breve!
+                Um organizador e player IPTV completo com interface moderna. Futuras atualizações em breve!
               </p>
               <p className="text-zinc-600 text-xs mt-4">
-                Â© 2026 - Todos os direitos reservados
+                © 2026 - Todos os direitos reservados
               </p>
             </div>
           </motion.div>

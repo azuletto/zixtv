@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useCallback, useMemo, useTransition, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { usePlaylist } from '../../hooks/usePlaylist';
 import { 
   HomeIcon, 
   CogIcon,
+  HeartIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronDownIcon,
@@ -189,23 +190,36 @@ const PlaylistDropdown = ({ playlists, selectedPlaylist, onSelect, isCollapsed }
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [donatePulseKey, setDonatePulseKey] = useState(0);
   const [isPending, startTransition] = useTransition();
   const { playlists, activePlaylist, selectPlaylist } = usePlaylist();
 
+  useEffect(() => {
+    setDonatePulseKey((prev) => prev + 1);
+  }, []);
+
   const menuItems = useMemo(() => [
-    { label: 'InÃ­cio', path: '/', icon: HomeIcon, solidIcon: HomeSolidIcon },
+    { label: 'Início', path: '/', icon: HomeIcon, solidIcon: HomeSolidIcon },
     { label: 'Ao Vivo', path: '/live', icon: LightningBoltIcon, solidIcon: LightningBoltSolidIcon },
     { label: 'Filmes', path: '/movies', icon: FilmIcon, solidIcon: FilmSolidIcon },
-    { label: 'SÃ©ries', path: '/series', icon: CollectionIcon, solidIcon: CollectionSolidIcon },
+    { label: 'Séries', path: '/series', icon: CollectionIcon, solidIcon: CollectionSolidIcon },
   ], []);
 
   const bottomItems = useMemo(() => [
-    { label: 'ConfiguraÃ§Ãµes', path: '/settings', icon: CogIcon, solidIcon: CogSolidIcon },
+    {
+      label: 'Doar',
+      to: { pathname: '/about', hash: '#doacao' },
+      icon: HeartIcon,
+      solidIcon: HeartIcon,
+      highlight: true
+    },
+    { label: 'Configurações', to: '/settings', icon: CogIcon, solidIcon: CogSolidIcon },
   ], []);
 
   const handleAddPlaylist = useCallback(() => setShowAddModal(true), []);
   
   const handleToggleCollapse = useCallback(() => {
+    setDonatePulseKey((prev) => prev + 1);
     setIsCollapsed(prev => !prev);
   }, []);
 
@@ -324,10 +338,10 @@ const Sidebar = () => {
         <div className="px-3 py-4 border-t border-zinc-800">
           {bottomItems.map((item) => (
             <NavLink
-              key={item.path}
-              to={item.path}
+              key={typeof item.to === 'string' ? item.to : `${item.to.pathname}${item.to.hash || ''}`}
+              to={item.to}
               className={({ isActive }) => `
-                flex items-center px-3 py-2 rounded-lg transition-all duration-200
+                relative flex items-center px-3 py-2 rounded-lg transition-all duration-200 overflow-visible
                 ${isActive 
                   ? 'bg-red-600 text-white shadow-lg shadow-red-600/25' 
                   : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
@@ -337,6 +351,27 @@ const Sidebar = () => {
             >
               {({ isActive }) => (
                 <>
+                  {item.highlight && (
+                    <motion.span
+                      key={`donate-pulse-${donatePulseKey}`}
+                      aria-hidden="true"
+                      initial={{ opacity: 0, scale: 1 }}
+                      animate={{
+                        opacity: [0, 0.7, 0],
+                        scale: [1, 1.02, 1.06]
+                      }}
+                      transition={{
+                        duration: 0.78,
+                        times: [0, 0.45, 1],
+                        ease: 'easeInOut',
+                        repeat: 2,
+                        repeatType: 'loop',
+                        repeatDelay: 0.3
+                      }}
+                      className="absolute -inset-1 rounded-lg border border-red-500/35 pointer-events-none"
+                      style={{ boxShadow: '0 0 0 1px rgba(255, 48, 64, 0.14), 0 0 10px rgba(255, 48, 64, 0.2)' }}
+                    />
+                  )}
                   {isActive ? (
                     <item.solidIcon className="w-5 h-5" />
                   ) : (

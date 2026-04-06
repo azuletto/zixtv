@@ -62,7 +62,7 @@ const BUFFER_PROFILES = {
 
 const BUFFER_PROFILE_ORDER = ['small', 'balanced', 'large', 'xlarge'];
 
-const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose }) => {
+const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startInCinema = false }) => {
   const UI_HIDE_DELAY_MS = 2800;
 
   const videoRef = useRef(null);
@@ -88,8 +88,18 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [bufferProfile, setBufferProfile] = useState(() => localStorage.getItem('zix.bufferProfile') || 'balanced');
   
-  const { mode, toggleMode, isMiniPlayer } = usePlayerStore();
+  const { mode, toggleMode, setMode, isMiniPlayer } = usePlayerStore();
   const isLiveContent = type === 'live';
+
+  useEffect(() => {
+    if (!startInCinema) return;
+
+    setMode('cinema');
+
+    return () => {
+      setMode('normal');
+    };
+  }, [startInCinema, setMode]);
 
   const clearUiHideTimer = useCallback(() => {
     if (hideUiTimeoutRef.current) {

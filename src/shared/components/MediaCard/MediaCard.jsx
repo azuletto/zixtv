@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { PlayIcon, PlusIcon, ThumbUpIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 import { useUIStore } from '../../../app/store/uiStore';
@@ -57,10 +57,10 @@ const MediaCard = ({ item, type, imageFit = 'cover', imageScale = 0.94, imagePad
         return `${totalEpisodes} ${totalEpisodes === 1 ? 'episodio' : 'episodios'}`;
       }
 
-      return 'SÃ©rie';
+      return 'Série';
     }
     if (type === 'tmdb') {
-      const itemType = normalizedItem.type === 'movie' ? 'Filme' : normalizedItem.type === 'tv' ? 'SÃ©rie' : '';
+      const itemType = normalizedItem.type === 'movie' ? 'Filme' : normalizedItem.type === 'tv' ? 'Série' : '';
       return itemType;
     }
     return '';
@@ -111,7 +111,7 @@ const MediaCard = ({ item, type, imageFit = 'cover', imageScale = 0.94, imagePad
 
         {isEntertainment && formattedRating && formattedRating !== 'N/A' && (
           <div className="absolute top-2 right-2 bg-green-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full z-10 shadow-lg">
-            â˜… {formattedRating}
+            Nota {formattedRating}
           </div>
         )}
         

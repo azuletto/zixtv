@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -12,40 +12,40 @@ import { ChevronLeftIcon, ChevronRightIcon, SearchIcon, XIcon, ChevronDownIcon }
 
 const genreDictionary = {
   
-  'acao': 'AÃ§Ã£o',
-  'aÃ§Ã£o': 'AÃ§Ã£o',
-  'action': 'AÃ§Ã£o',
-  'acÃ£o': 'AÃ§Ã£o',
-  'accao': 'AÃ§Ã£o',
-  'aÃ§ao': 'AÃ§Ã£o',
+  'acao': 'Ação',
+  'ação': 'Ação',
+  'action': 'Ação',
+  'acão': 'Ação',
+  'accao': 'Ação',
+  'açao': 'Ação',
   
   
   'aventura': 'Aventura',
   'adventure': 'Aventura',
-  'aventura e acao': 'AÃ§Ã£o e Aventura',
-  'aventura e aÃ§Ã£o': 'AÃ§Ã£o e Aventura',
-  'acao e aventura': 'AÃ§Ã£o e Aventura',
-  'aÃ§Ã£o e aventura': 'AÃ§Ã£o e Aventura',
-  'action adventure': 'AÃ§Ã£o e Aventura',
+  'aventura e acao': 'Ação e Aventura',
+  'aventura e ação': 'Ação e Aventura',
+  'acao e aventura': 'Ação e Aventura',
+  'ação e aventura': 'Ação e Aventura',
+  'action adventure': 'Ação e Aventura',
   
   
-  'comedia': 'ComÃ©dia',
-  'comÃ©dia': 'ComÃ©dia',
-  'comedy': 'ComÃ©dia',
-  'comedia romantica': 'ComÃ©dia RomÃ¢ntica',
-  'comÃ©dia romÃ¢ntica': 'ComÃ©dia RomÃ¢ntica',
-  'romantic comedy': 'ComÃ©dia RomÃ¢ntica',
+  'comedia': 'Comédia',
+  'comédia': 'Comédia',
+  'comedy': 'Comédia',
+  'comedia romantica': 'Comédia Romântica',
+  'comédia romântica': 'Comédia Romântica',
+  'romantic comedy': 'Comédia Romântica',
   'sitcom': 'Sitcom',
-  'comedia dramatica': 'ComÃ©dia DramÃ¡tica',
-  'comÃ©dia dramÃ¡tica': 'ComÃ©dia DramÃ¡tica',
+  'comedia dramatica': 'Comédia Dramática',
+  'comédia dramática': 'Comédia Dramática',
   
   
   'drama': 'Drama',
   'dramatico': 'Drama',
-  'dramÃ¡tico': 'Drama',
+  'dramático': 'Drama',
   'dramatic': 'Drama',
-  'drama romantico': 'Drama RomÃ¢ntico',
-  'drama romÃ¢ntico': 'Drama RomÃ¢ntico',
+  'drama romantico': 'Drama Romântico',
+  'drama romântico': 'Drama Romântico',
   
   
   'terror': 'Terror',
@@ -54,11 +54,11 @@ const genreDictionary = {
   'thriller': 'Suspense',
   
   
-  'ficcao cientifica': 'FicÃ§Ã£o CientÃ­fica',
-  'ficÃ§Ã£o cientÃ­fica': 'FicÃ§Ã£o CientÃ­fica',
-  'science fiction': 'FicÃ§Ã£o CientÃ­fica',
-  'sci-fi': 'FicÃ§Ã£o CientÃ­fica',
-  'scifi': 'FicÃ§Ã£o CientÃ­fica',
+  'ficcao cientifica': 'Ficção Científica',
+  'ficção científica': 'Ficção Científica',
+  'science fiction': 'Ficção Científica',
+  'sci-fi': 'Ficção Científica',
+  'scifi': 'Ficção Científica',
   
   
   'fantasia': 'Fantasia',
@@ -67,7 +67,7 @@ const genreDictionary = {
   
   'romance': 'Romance',
   'romantico': 'Romance',
-  'romÃ¢ntico': 'Romance',
+  'romântico': 'Romance',
   'romantic': 'Romance',
   
   
@@ -75,15 +75,15 @@ const genreDictionary = {
   'western': 'Faroeste',
   
   
-  'animacao': 'AnimaÃ§Ã£o',
-  'animaÃ§Ã£o': 'AnimaÃ§Ã£o',
-  'animation': 'AnimaÃ§Ã£o',
+  'animacao': 'Animação',
+  'animação': 'Animação',
+  'animation': 'Animação',
   'anime': 'Anime',
   
   
-  'documentario': 'DocumentÃ¡rio',
-  'documentÃ¡rio': 'DocumentÃ¡rio',
-  'documentary': 'DocumentÃ¡rio',
+  'documentario': 'Documentário',
+  'documentário': 'Documentário',
+  'documentary': 'Documentário',
   
   
   'policial': 'Policial',
@@ -106,14 +106,14 @@ const genreDictionary = {
   'sports': 'Esporte',
   
   
-  'historia': 'HistÃ³ria',
-  'histÃ³ria': 'HistÃ³ria',
-  'history': 'HistÃ³ria',
+  'historia': 'História',
+  'história': 'História',
+  'history': 'História',
   
   
-  'familia': 'FamÃ­lia',
-  'famÃ­lia': 'FamÃ­lia',
-  'family': 'FamÃ­lia',
+  'familia': 'Família',
+  'família': 'Família',
+  'family': 'Família',
   'infantil': 'Infantil',
   
   
@@ -166,6 +166,8 @@ const MoviesScreen = () => {
   const { getMovies, isLoading: playlistLoading } = usePlaylist();
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [showPlayer, setShowPlayer] = useState(false);
+  const [startInCinema, setStartInCinema] = useState(false);
+  const [prefetchedTMDBData, setPrefetchedTMDBData] = useState(null);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   
   const allMovies = getMovies() || [];
@@ -243,6 +245,8 @@ const MoviesScreen = () => {
   const visibleCount = totalItems;
 
   const handleMovieSelect = (movie) => {
+    setStartInCinema(false);
+    setPrefetchedTMDBData(null);
     setSelectedMovie(movie);
     setShowPlayer(true);
   };
@@ -257,6 +261,8 @@ const MoviesScreen = () => {
       return false;
     }) || autoPlayItem;
 
+    setStartInCinema(Boolean(location.state?.startInCinema));
+    setPrefetchedTMDBData(location.state?.prefetchedTMDBData || null);
     setSelectedMovie(matched);
     setShowPlayer(true);
     navigate(location.pathname, { replace: true, state: {} });
@@ -279,8 +285,8 @@ const MoviesScreen = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M7 4v16M17 4v16M3 8h18M3 16h18M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" />
             </svg>
           </div>
-          <h2 className="text-xl text-white mb-2">Nenhum filme disponÃ­vel</h2>
-          <p className="text-zinc-500">Adicione uma playlist com filmes para comeÃ§ar</p>
+          <h2 className="text-xl text-white mb-2">Nenhum filme disponível</h2>
+          <p className="text-zinc-500">Adicione uma playlist com filmes para começar</p>
         </div>
       </div>
     );
@@ -488,7 +494,13 @@ const MoviesScreen = () => {
               title={selectedMovie.name}
               type="movie"
               metadata={selectedMovie.metadata}
-              onClose={() => setShowPlayer(false)}
+              tmdbData={prefetchedTMDBData}
+              startInCinema={startInCinema}
+              onClose={() => {
+                setShowPlayer(false);
+                setStartInCinema(false);
+                setPrefetchedTMDBData(null);
+              }}
             />
           </div>
         </motion.div>

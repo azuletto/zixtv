@@ -1,10 +1,26 @@
-﻿
+
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EpisodeList from './EpisodeList';
 import CustomPlayer from '../player/CustomPlayer';
 import { tmdbService } from '../../core/services/tmdb/TMDBService';
+const normalizeDescription = (value, fallback = 'Descrição não disponível') => {
+  const raw = String(value || '').trim();
+  if (!raw) return fallback;
+
+  const fixed = raw
+    .replace(/descri(?:Ã§|�)o/gi, 'descrição')
+    .replace(/n(?:Ã£|�)o/gi, 'não')
+    .replace(/dispon(?:Ã­|�)vel/gi, 'disponível')
+    .trim();
+
+  if (/^sem\s+descri/i.test(fixed)) {
+    return 'Sem descrição disponível';
+  }
+
+  return fixed;
+};
 
 const extractImageIdFromUrl = (url) => {
   if (!url) return null;
@@ -21,7 +37,7 @@ const SeriesDetails = ({ series }) => {
   const [selectedEpisode, setSelectedEpisode] = useState(null);
   const [showPlayer, setShowPlayer] = useState(false);
 
-  const seriesName = series?.name || series?.title || series?.seriesName || 'SÃ©rie';
+  const seriesName = series?.name || series?.title || series?.seriesName || 'Série';
   const seriesCacheKey = useMemo(() => seriesName.toLowerCase().trim(), [seriesName]);
 
   useEffect(() => {
@@ -88,11 +104,13 @@ const SeriesDetails = ({ series }) => {
         ...episode,
         sequence: index + 1,
         rating: episode?.metadata?.rating || tmdbData?.voteAverage || 'N/A',
-        description:
+        description: normalizeDescription(
           episode?.metadata?.description ||
-          episode?.overview ||
-          tmdbData?.overview ||
-          'DescriÃ§Ã£o nÃ£o disponÃ­vel',
+            episode?.overview ||
+            tmdbData?.overview ||
+            '',
+          'Descrição não disponível'
+        ),
         posterUrl: episode?.tvg?.logo || episode?.logo || episode?.metadata?.poster || tmdbData?.posterUrl || tmdbData?.poster || null,
         backdropUrl: episode?.tvg?.logo || episode?.logo || episode?.metadata?.backdrop || tmdbData?.backdropUrl || tmdbData?.backdrop || null
       }));
@@ -150,12 +168,12 @@ const SeriesDetails = ({ series }) => {
                   {tmdbData?.voteAverage ? tmdbData.voteAverage.toFixed(1) : (series.metadata?.rating || 'N/A')}
                 </span>
                 <span>{tmdbData?.year || series.metadata?.year || 'Ano desconhecido'}</span>
-                <span>{tmdbData?.genre || series.metadata?.genre || 'GÃªnero'}</span>
+                <span>{tmdbData?.genre || series.metadata?.genre || 'Gênero'}</span>
                 <span>{seasonsCount} Temporada(s)</span>
-                <span>{orderedEpisodes.length} EpisÃ³dio(s)</span>
+                <span>{orderedEpisodes.length} Episódio(s)</span>
               </div>
               <p className="text-white max-w-2xl text-base md:text-lg line-clamp-3">
-                {tmdbData?.overview || series.metadata?.description || 'DescriÃ§Ã£o nÃ£o disponÃ­vel'}
+                {normalizeDescription(tmdbData?.overview || series.metadata?.description || '')}
               </p>
             </>
           )}
@@ -164,7 +182,7 @@ const SeriesDetails = ({ series }) => {
       </div>
 
       <div className="px-6 md:px-12 py-8">
-        <h2 className="text-2xl font-bold text-white mb-6">EpisÃ³dios em sequÃªncia</h2>
+        <h2 className="text-2xl font-bold text-white mb-6">Episódios em sequência</h2>
         <EpisodeList
           episodes={orderedEpisodes}
           onSelectEpisode={handleEpisodeSelect}

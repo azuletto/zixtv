@@ -1,11 +1,10 @@
 ﻿
 
 export class M3UParser {
-  async parse(url) {
+  async parse(source) {
     
     try {
-      const response = await fetch(url);
-      const content = await response.text();
+      const content = await this.resolveContent(source);
       
       const lines = content.split('\n');
       const items = [];
@@ -48,6 +47,61 @@ export class M3UParser {
     } catch (error) {
       throw new Error(`Erro ao parsear M3U: ${error.message}`);
     }
+  }
+
+  isLikelyM3UContent(source) {
+    if (typeof source !== 'string') return false;
+    const trimmed = source.trim();
+    if (!trimmed) return false;
+    return trimmed.includes('#EXTM3U') || trimmed.includes('#EXTINF:');
+  }
+
+  isHttpUrl(source) {
+    if (typeof source !== 'string') return false;
+    try {
+      const parsed = new URL(source);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  async resolveContent(source) {
+    if (this.isLikelyM3UContent(source)) {
+      return source;
+    }
+
+    if (!this.isHttpUrl(source)) {
+      throw new Error('Fonte de playlist invalida. Use uma URL http/https ou conteudo M3U valido.');
+    }
+
+    const response = await fetch('/api/proxy/m3u', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ url: source })
+    });
+
+    if (!response.ok) {
+      let message = `Falha no proxy (${response.status})`;
+      try {
+        const errorData = await response.json();
+        if (errorData?.error) {
+          message = errorData.error;
+        }
+      } catch (_) {
+      }
+      throw new Error(message);
+    }
+
+    const content = await response.text();
+
+    if (typeof content !== 'string' || !content.trim()) {
+      throw new Error('Resposta do proxy invalida ao carregar playlist.');
+    }
+
+    return content;
   }
 
   parseExtInf(line) {

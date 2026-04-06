@@ -1,9 +1,9 @@
-﻿
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlayIcon, InformationCircleIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 
-const HeroBanner = ({ items = [] }) => {
+const HeroBanner = ({ items = [], onPlay, onMoreInfo }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -80,22 +80,28 @@ const HeroBanner = ({ items = [] }) => {
             <span className="text-xs sm:text-sm text-zinc-300">{currentItem.year}</span>
           )}
           <span className="text-xs sm:text-sm text-zinc-300 capitalize">
-            {currentItem.type === 'movie' ? 'Filme' : currentItem.type === 'tv' ? 'SÃ©rie' : 'Destaque'}
+            {currentItem.type === 'movie' ? 'Filme' : currentItem.type === 'tv' ? 'Série' : 'Destaque'}
           </span>
         </div>
 
         <p className="text-sm sm:text-base md:text-lg text-zinc-200 mb-4 sm:mb-6 md:mb-8 line-clamp-2 sm:line-clamp-3 max-w-2xl">
-          {currentItem.overview || 'Sinopse nÃ£o disponÃ­vel'}
+          {currentItem.overview || 'Sinopse não disponível'}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-          <button className="bg-red-600 hover:bg-red-700 text-white px-4 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 rounded-lg font-bold flex items-center justify-center transition-colors text-sm sm:text-base">
+          <button
+            onClick={() => onPlay?.(currentItem)}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 rounded-lg font-bold flex items-center justify-center transition-colors text-sm sm:text-base"
+          >
             <PlayIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
             Assistir
           </button>
-          <button className="bg-zinc-800/80 hover:bg-zinc-700 text-white px-4 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 rounded-lg font-bold flex items-center justify-center transition-colors text-sm sm:text-base">
+          <button
+            onClick={() => onMoreInfo?.(currentItem)}
+            className="bg-zinc-800/80 hover:bg-zinc-700 text-white px-4 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 rounded-lg font-bold flex items-center justify-center transition-colors text-sm sm:text-base"
+          >
             <InformationCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-            Mais InformaÃ§Ãµes
+            Mais Informações
           </button>
         </div>
       </div>

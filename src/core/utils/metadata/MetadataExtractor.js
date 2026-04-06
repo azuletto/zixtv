@@ -1,4 +1,4 @@
-﻿
+
 
 export class MetadataExtractor {
   constructor() {
@@ -6,7 +6,7 @@ export class MetadataExtractor {
       rating: 'N/A',
       year: 'Desconhecido',
       genre: 'Geral',
-      description: 'Sem descriÃ§Ã£o disponÃ­vel',
+      description: 'Sem descrição disponível',
       poster: '/default-poster.png',
       backdrop: '/default-backdrop.png',
       quality: 'HD',
@@ -96,7 +96,7 @@ export class MetadataExtractor {
       /(DUBLADO|DUB)/i,
       /(LEGENDADO|LEG)/i,
       /(NACIONAL)/i,
-      /(INGLÃŠS|ENGLISH)/i
+      /(INGLES|ENGLISH)/i
     ];
 
     for (const pattern of langPatterns) {
@@ -122,31 +122,31 @@ export class MetadataExtractor {
     if (!category) return {};
 
     const genreMap = {
-      'action': 'AÃ§Ã£o',
-      'comedy': 'ComÃ©dia',
+      'action': 'Ação',
+      'comedy': 'Comédia',
       'drama': 'Drama',
       'horror': 'Terror',
-      'sci-fi': 'FicÃ§Ã£o CientÃ­fica',
-      'scifi': 'FicÃ§Ã£o CientÃ­fica',
+      'sci-fi': 'Ficção Científica',
+      'scifi': 'Ficção Científica',
       'romance': 'Romance',
-      'documentary': 'DocumentÃ¡rio',
-      'document': 'DocumentÃ¡rio',
+      'documentary': 'Documentário',
+      'document': 'Documentário',
       'thriller': 'Suspense',
       'suspense': 'Suspense',
       'fantasy': 'Fantasia',
-      'animation': 'AnimaÃ§Ã£o',
+      'animation': 'Animação',
       'anime': 'Anime',
-      'family': 'FamÃ­lia',
+      'family': 'Família',
       'adventure': 'Aventura',
       'crime': 'Crime',
-      'mystery': 'MistÃ©rio',
+      'mystery': 'Mistério',
       'western': 'Faroeste',
       'war': 'Guerra',
-      'history': 'HistÃ³ria',
-      'music': 'MÃºsica',
+      'history': 'História',
+      'music': 'Música',
       'reality': 'Reality Show',
       'talk': 'Talk Show',
-      'news': 'NotÃ­cias',
+      'news': 'Notícias',
       'sports': 'Esportes'
     };
 

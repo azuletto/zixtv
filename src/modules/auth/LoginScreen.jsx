@@ -1,4 +1,4 @@
-﻿
+
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
@@ -28,7 +28,7 @@ const LoginScreen = () => {
         localStorage.setItem('auth', 'true');
         navigate('/');
       } else {
-        setError('UsuÃ¡rio ou senha invÃ¡lidos');
+        setError('Usuário ou senha inválidos');
       }
       setLoading(false);
     }, 1000);
@@ -44,13 +44,13 @@ const LoginScreen = () => {
         {}
         <div className="text-center mb-8">
           <h1 className="text-5xl font-bold text-red-600 mb-2">ZixTV</h1>
-          <p className="text-gray-400">FaÃ§a login para continuar</p>
+          <p className="text-gray-400">Faça login para continuar</p>
         </div>
 
         {}
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label className="block text-gray-300 mb-2">UsuÃ¡rio</label>
+            <label className="block text-gray-300 mb-2">Usuário</label>
             <div className="relative">
               <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
               <input
@@ -58,7 +58,7 @@ const LoginScreen = () => {
                 value={formData.username}
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                 className="w-full bg-gray-700/50 text-white rounded-lg pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-600"
-                placeholder="Digite seu usuÃ¡rio"
+                placeholder="Digite seu usuário"
                 required
               />
             </div>
@@ -111,8 +111,8 @@ const LoginScreen = () => {
 
         {}
         <div className="mt-6 text-center">
-          <p className="text-gray-400 text-sm mb-2">Credenciais de demonstraÃ§Ã£o:</p>
-          <p className="text-gray-300 text-sm">UsuÃ¡rio: demo / Senha: demo</p>
+          <p className="text-gray-400 text-sm mb-2">Credenciais de demonstração:</p>
+          <p className="text-gray-300 text-sm">Usuário: demo / Senha: demo</p>
         </div>
 
         {}

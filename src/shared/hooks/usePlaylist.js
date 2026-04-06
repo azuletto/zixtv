@@ -1,4 +1,4 @@
-﻿
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePlaylistStore } from '../../app/store/playlistStore';
 import { PlaylistService } from '../../core/services/playlist/PlaylistService';
@@ -333,7 +333,7 @@ export const usePlaylist = () => {
     const categories = new Map();
     
     series.forEach(serie => {
-      const name = serie.seriesName || serie.name || 'SÃ©ries';
+      const name = serie.seriesName || serie.name || 'Séries';
       if (!categories.has(name)) {
         categories.set(name, []);
       }

@@ -1,4 +1,4 @@
-﻿
+
 
 import React, { memo, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
@@ -39,9 +39,9 @@ const PlayerControls = ({
 
   const bufferOptions = [
     { value: 'small', label: 'Menor' },
-    { value: 'balanced', label: 'MÃ©dio' },
+    { value: 'balanced', label: 'Médio' },
     { value: 'large', label: 'Maior' },
-    { value: 'xlarge', label: 'MÃ¡ximo' }
+    { value: 'xlarge', label: 'Máximo' }
   ];
 
   useEffect(() => {
@@ -215,7 +215,7 @@ const PlayerControls = ({
 
             {isBufferMenuOpen && (
               <div className="absolute bottom-full right-0 mb-2 min-w-40 rounded-lg border border-zinc-800 bg-black/95 p-2 shadow-xl z-50 pointer-events-auto">
-                <div className="mb-2 px-2 text-[10px] uppercase tracking-wide text-zinc-500">Tamanho do buffer de renderizaÃ§Ã£o</div>
+                <div className="mb-2 px-2 text-[10px] uppercase tracking-wide text-zinc-500">Tamanho do buffer de renderização</div>
                 <div className="space-y-1">
                   {bufferOptions.map((option) => (
                     <button
