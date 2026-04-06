@@ -1,22 +1,61 @@
-function resolveTargetUrl(req) {
-  if (req.method === 'GET') {
-    return req.query?.url;
-  }
+function parseUrlFromRawString(raw) {
+  if (!raw || typeof raw !== 'string') return null;
 
-  if (req.method === 'POST') {
-    if (typeof req.body === 'string') {
-      try {
-        const parsed = JSON.parse(req.body);
-        return parsed?.url;
-      } catch (_) {
-        return null;
-      }
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  try {
+    const parsedJson = JSON.parse(trimmed);
+    if (parsedJson && typeof parsedJson.url === 'string') {
+      return parsedJson.url;
     }
-
-    return req.body?.url;
+  } catch (_) {
   }
 
-  return null;
+  const queryMatch = trimmed.match(/(?:^|[?&])url=([^&]+)/i);
+  if (queryMatch?.[1]) {
+    try {
+      return decodeURIComponent(queryMatch[1]);
+    } catch (_) {
+      return queryMatch[1];
+    }
+  }
+
+  return trimmed;
+}
+
+function resolveTargetUrl(req) {
+  let candidate = req.query?.url || req.body?.url || null;
+
+  if (!candidate && typeof req.url === 'string') {
+    const urlFromPath = parseUrlFromRawString(req.url);
+    if (urlFromPath && urlFromPath.includes('http')) {
+      candidate = urlFromPath;
+    }
+  }
+
+  if (!candidate && typeof req.body === 'string') {
+    candidate = parseUrlFromRawString(req.body);
+  }
+
+  if (!candidate && Buffer.isBuffer(req.body)) {
+    candidate = parseUrlFromRawString(req.body.toString('utf8'));
+  }
+
+  if (typeof candidate !== 'string') return null;
+
+  const normalized = candidate.trim();
+  if (!normalized) return null;
+
+  if (/^https?%3a/i.test(normalized)) {
+    try {
+      return decodeURIComponent(normalized);
+    } catch (_) {
+      return normalized;
+    }
+  }
+
+  return normalized;
 }
 
 function isValidTarget(url) {
