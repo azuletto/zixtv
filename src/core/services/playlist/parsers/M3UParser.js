@@ -1,4 +1,4 @@
-﻿import { LargePlaylistLoader } from '../../../core/services/playlist/LargePlaylistLoader.js';
+﻿import { LargePlaylistLoader } from '../LargePlaylistLoader.js';
 
 export class M3UParser {
   constructor() {
