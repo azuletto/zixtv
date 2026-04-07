@@ -1,10 +1,4 @@
-﻿import { LargePlaylistLoader } from '../LargePlaylistLoader.js';
-
-export class M3UParser {
-  constructor() {
-    this.largeLoader = new LargePlaylistLoader();
-  }
-
+﻿export class M3UParser {
   async parse(source) {
     try {
       const content = await this.resolveContent(source);
@@ -66,94 +60,46 @@ export class M3UParser {
   }
 
   async resolveContent(source) {
+    // Se já é conteúdo M3U, retorna direto
     if (this.isLikelyM3UContent(source)) {
       return source;
     }
 
+    // Se não é URL, erro
     if (!this.isHttpUrl(source)) {
       throw new Error('Fonte de playlist invalida. Use uma URL http/https ou conteudo M3U valido.');
     }
 
-    // 🔥 TENTA PELO SERVICE WORKER PRIMEIRO 🔥
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-      try {
-        console.log('[M3UParser] Tentando via Service Worker...');
-        const response = await fetch('/api/proxy-m3u', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: source })
-        });
-        
-        if (response.ok) {
-          const content = await response.text();
-          if (content && content.trim()) {
-            console.log('[M3UParser] Service Worker funcionou! Tamanho:', content.length);
-            return content;
-          }
-        }
-      } catch (error) {
-        console.log('[M3UParser] Service Worker falhou:', error.message);
-      }
+    // USA APENAS O SERVICE WORKER
+    if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+      throw new Error('Service Worker não está ativo. Recarregue a página.');
     }
 
-    // Usa o loader para arquivos grandes
     try {
-      console.log('[M3UParser] Carregando playlist via LargePlaylistLoader');
-      const content = await this.largeLoader.loadPlaylist(source, (progress) => {
-        console.log(`[M3UParser] Progresso: ${progress.percent}% (${progress.chunks} chunks)`);
-      });
-      return content;
-    } catch (error) {
-      console.error('[M3UParser] Erro no LargePlaylistLoader, tentando fallback:', error.message);
+      console.log('[M3UParser] Baixando via Service Worker:', source);
       
-      // Fallback: tenta os endpoints normais
-      const endpoints = ['/api/proxy/m3u', '/api/m3u'];
-      let response = null;
-      let lastError = null;
-
-      for (const endpoint of endpoints) {
-        try {
-          response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ url: source })
-          });
-
-          if (response.status === 404) {
-            continue;
-          }
-
-          break;
-        } catch (error) {
-          lastError = error;
-        }
-      }
-
-      if (!response) {
-        throw new Error(lastError?.message || 'Falha ao conectar com o proxy de playlist.');
-      }
+      const response = await fetch('/api/playlist-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: source })
+      });
 
       if (!response.ok) {
-        let message = `Falha no proxy (${response.status})`;
-        try {
-          const errorData = await response.json();
-          if (errorData?.error) {
-            message = errorData.error;
-          }
-        } catch (_) {
-        }
-        throw new Error(message);
+        const error = await response.json();
+        throw new Error(error.error || `HTTP ${response.status}`);
       }
 
       const content = await response.text();
 
-      if (typeof content !== 'string' || !content.trim()) {
-        throw new Error('Resposta do proxy invalida ao carregar playlist.');
+      if (!content || !content.trim()) {
+        throw new Error('Playlist vazia');
       }
 
+      console.log('[M3UParser] Playlist carregada:', content.length, 'bytes');
       return content;
+
+    } catch (error) {
+      throw new Error(`Falha ao carregar playlist: ${error.message}`);
     }
   }
 

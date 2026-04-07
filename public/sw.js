@@ -1,16 +1,14 @@
 // public/sw.js
-const CACHE_NAME = 'zix-proxy-v1';
-
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
   
-  // Intercepta chamadas para o proxy interno
-  if (url.includes('/api/proxy-m3u')) {
-    event.respondWith(handleProxyRequest(event.request));
+  // Se for requisição para playlist (qualquer URL HTTP/HTTPS)
+  if (url.includes('/api/playlist-proxy')) {
+    event.respondWith(handlePlaylistRequest(event.request));
   }
 });
 
-async function handleProxyRequest(request) {
+async function handlePlaylistRequest(request) {
   try {
     const body = await request.json();
     const targetUrl = body.url;
@@ -22,7 +20,9 @@ async function handleProxyRequest(request) {
       });
     }
     
-    // Service Worker pode fazer requisição HTTP sem CORS!
+    console.log('[SW] Baixando playlist:', targetUrl);
+    
+    // Service Worker faz requisição DIRETA (sem CORS!)
     const response = await fetch(targetUrl, {
       method: 'GET',
       headers: {
@@ -32,11 +32,12 @@ async function handleProxyRequest(request) {
     
     const content = await response.text();
     
+    console.log('[SW] Playlist baixada:', content.length, 'bytes');
+    
     return new Response(content, {
       status: 200,
       headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Access-Control-Allow-Origin': '*'
+        'Content-Type': 'text/plain; charset=utf-8'
       }
     });
   } catch (error) {
