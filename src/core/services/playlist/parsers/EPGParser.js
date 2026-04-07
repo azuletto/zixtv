@@ -1,5 +1,7 @@
 ﻿
 
+import { swProxyService } from '../../network/SWProxyService';
+
 export class EPGParser {
   isLikelyXmlContent(source) {
     if (typeof source !== 'string') return false;
@@ -8,27 +10,15 @@ export class EPGParser {
     return trimmed.startsWith('<') || trimmed.includes('<?xml');
   }
 
-  async fetchViaProxy(targetUrl) {
-    const endpoints = ['/api/proxy/fetch', '/api/fetch'];
-    let response = null;
-
-    for (const endpoint of endpoints) {
-      response = await fetch(`${endpoint}?url=${encodeURIComponent(targetUrl)}`);
-      if (response.status !== 404) break;
-    }
-
-    if (!response.ok) {
-      throw new Error(`Falha ao carregar EPG (${response.status})`);
-    }
-
-    return response.text();
+  async fetchViaSW(targetUrl) {
+    return swProxyService.fetchText(targetUrl);
   }
 
   async parse(source) {
     try {
       const xmlText = this.isLikelyXmlContent(source)
         ? source
-        : await this.fetchViaProxy(source);
+        : await this.fetchViaSW(source);
       
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(xmlText, 'text/xml');

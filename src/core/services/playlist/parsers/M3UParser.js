@@ -1,4 +1,6 @@
-﻿export class M3UParser {
+﻿import { swProxyService } from '../../network/SWProxyService';
+
+export class M3UParser {
   async parse(source) {
     try {
       const content = await this.resolveContent(source);
@@ -70,26 +72,9 @@
       throw new Error('Fonte de playlist invalida. Use uma URL http/https ou conteudo M3U valido.');
     }
 
-    // USA APENAS O SERVICE WORKER
-    if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
-      throw new Error('Service Worker não está ativo. Recarregue a página.');
-    }
-
     try {
       console.log('[M3UParser] Baixando via Service Worker:', source);
-      
-      const response = await fetch('/api/playlist-proxy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: source })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || `HTTP ${response.status}`);
-      }
-
-      const content = await response.text();
+      const content = await swProxyService.fetchText(source);
 
       if (!content || !content.trim()) {
         throw new Error('Playlist vazia');

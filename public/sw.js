@@ -1,49 +1,92 @@
-// public/sw.js
+const SW_PROXY_PATH = '/sw-proxy';
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener('fetch', (event) => {
-  const url = event.request.url;
-  
-  // Se for requisição para playlist (qualquer URL HTTP/HTTPS)
-  if (url.includes('/api/playlist-proxy')) {
-    event.respondWith(handlePlaylistRequest(event.request));
+  const url = new URL(event.request.url);
+
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  if (url.pathname === SW_PROXY_PATH) {
+    event.respondWith(handleProxyRequest(url));
   }
 });
 
-async function handlePlaylistRequest(request) {
+async function handleProxyRequest(url) {
   try {
-    const body = await request.json();
-    const targetUrl = body.url;
-    
+    const targetUrl = url.searchParams.get('url');
+    const type = url.searchParams.get('type') || 'text';
+
     if (!targetUrl) {
-      return new Response(JSON.stringify({ error: 'URL required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
+      return jsonResponse({ error: 'URL required' }, 400);
+    }
+
+    let parsedTarget;
+
+    try {
+      parsedTarget = new URL(targetUrl);
+    } catch (_) {
+      return jsonResponse({ error: 'Invalid target URL' }, 400);
+    }
+
+    if (parsedTarget.protocol !== 'http:' && parsedTarget.protocol !== 'https:') {
+      return jsonResponse({ error: 'Only http/https URLs are allowed' }, 400);
+    }
+
+    const upstreamResponse = await fetch(parsedTarget.toString(), {
+      method: 'GET',
+      redirect: 'follow',
+      cache: 'no-store'
+    });
+
+    if (!upstreamResponse.ok) {
+      return jsonResponse({ error: `Upstream request failed (${upstreamResponse.status})` }, upstreamResponse.status);
+    }
+
+    const payload = await upstreamResponse.text();
+
+    if (type === 'json') {
+      try {
+        JSON.parse(payload);
+      } catch (_) {
+        return jsonResponse({ error: 'Upstream did not return valid JSON' }, 502);
+      }
+
+      return new Response(payload, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store'
+        }
       });
     }
-    
-    console.log('[SW] Baixando playlist:', targetUrl);
-    
-    // Service Worker faz requisição DIRETA (sem CORS!)
-    const response = await fetch(targetUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'ZixTV/1.0'
-      }
-    });
-    
-    const content = await response.text();
-    
-    console.log('[SW] Playlist baixada:', content.length, 'bytes');
-    
-    return new Response(content, {
+
+    return new Response(payload, {
       status: 200,
       headers: {
-        'Content-Type': 'text/plain; charset=utf-8'
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-store'
       }
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return jsonResponse({ error: error?.message || 'Service Worker proxy error' }, 500);
   }
+}
+
+function jsonResponse(body, status) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store'
+    }
+  });
 }

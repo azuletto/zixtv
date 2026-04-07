@@ -1,26 +1,10 @@
 
 
+import { swProxyService } from '../../network/SWProxyService';
+
 export class XtreamParser {
-  async fetchJsonViaProxy(targetUrl) {
-    const endpoints = ['/api/proxy/fetch', '/api/fetch'];
-    let response = null;
-
-    for (const endpoint of endpoints) {
-      response = await fetch(`${endpoint}?url=${encodeURIComponent(targetUrl)}`);
-      if (response.status !== 404) break;
-    }
-
-    if (!response.ok) {
-      throw new Error(`Falha ao conectar com o servidor: ${response.status}`);
-    }
-
-    const text = await response.text();
-
-    try {
-      return JSON.parse(text);
-    } catch (_) {
-      throw new Error('Servidor não respondeu com JSON válido');
-    }
+  async fetchJsonViaSW(targetUrl) {
+    return swProxyService.fetchJson(targetUrl);
   }
 
   async parse({ url, username, password, server }) {
@@ -79,7 +63,7 @@ export class XtreamParser {
   }
 
   async fetchUserInfo(baseUrl, username, password) {
-    const data = await this.fetchJsonViaProxy(
+    const data = await this.fetchJsonViaSW(
       `${baseUrl}/player_api.php?username=${username}&password=${password}`
     );
     if (data.user_info === undefined) {
@@ -89,21 +73,21 @@ export class XtreamParser {
   }
 
   async fetchLiveStreams(baseUrl, username, password) {
-    const data = await this.fetchJsonViaProxy(
+    const data = await this.fetchJsonViaSW(
       `${baseUrl}/player_api.php?username=${username}&password=${password}&action=get_live_streams`
     );
     return Array.isArray(data) ? data : [];
   }
 
   async fetchVodStreams(baseUrl, username, password) {
-    const data = await this.fetchJsonViaProxy(
+    const data = await this.fetchJsonViaSW(
       `${baseUrl}/player_api.php?username=${username}&password=${password}&action=get_vod_streams`
     );
     return Array.isArray(data) ? data : [];
   }
 
   async fetchSeries(baseUrl, username, password) {
-    const data = await this.fetchJsonViaProxy(
+    const data = await this.fetchJsonViaSW(
       `${baseUrl}/player_api.php?username=${username}&password=${password}&action=get_series`
     );
     return Array.isArray(data) ? data : [];
