@@ -7,11 +7,27 @@
   "rewrites": [
     {
       "source": "/api/proxy/m3u",
-      "destination": "/api/m3u"
+      "destination": "/api/proxy/m3u"
     },
     {
       "source": "/api/proxy/fetch",
+      "destination": "/api/proxy/fetch"
+    },
+    {
+      "source": "/api/m3u",
+      "destination": "/api/m3u"
+    },
+    {
+      "source": "/api/fetch",
       "destination": "/api/fetch"
+    },
+    {
+      "source": "/api/tmdb/:path*",
+      "destination": "/api/tmdb/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/"
     }
   ],
   "headers": [
