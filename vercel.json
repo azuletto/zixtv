@@ -6,6 +6,14 @@
   },
   "rewrites": [
     {
+      "source": "/api/proxy/m3u",
+      "destination": "/api/m3u"
+    },
+    {
+      "source": "/api/m3u",
+      "destination": "/api/m3u"
+    },
+    {
       "source": "/api/tmdb/:path*",
       "destination": "/api/tmdb/:path*"
     },

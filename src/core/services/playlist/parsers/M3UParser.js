@@ -1,6 +1,4 @@
-﻿import { swProxyService } from '../../network/SWProxyService';
-
-export class M3UParser {
+﻿export class M3UParser {
   async parse(source) {
     try {
       const content = await this.resolveContent(source);
@@ -72,9 +70,22 @@ export class M3UParser {
       throw new Error('Fonte de playlist invalida. Use uma URL http/https ou conteudo M3U valido.');
     }
 
+    // USA A API DA VERCEL (backend) - SOLUÇÃO DEFINITIVA
     try {
-      console.log('[M3UParser] Baixando via Service Worker:', source);
-      const content = await swProxyService.fetchText(source);
+      console.log('[M3UParser] Baixando via API Vercel:', source);
+      
+      const response = await fetch('/api/m3u', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: source })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || `HTTP ${response.status}`);
+      }
+
+      const content = await response.text();
 
       if (!content || !content.trim()) {
         throw new Error('Playlist vazia');
