@@ -69,6 +69,10 @@ function isValidTarget(url) {
   }
 }
 
+function buildProxyUrl(targetUrl) {
+  return `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -89,7 +93,9 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'URL invalida. Informe uma URL http/https.' });
     }
 
-    const upstreamResponse = await fetch(targetUrl, {
+    const proxyUrl = buildProxyUrl(targetUrl);
+
+    const upstreamResponse = await fetch(proxyUrl, {
       method: 'GET',
       redirect: 'follow',
       headers: {
