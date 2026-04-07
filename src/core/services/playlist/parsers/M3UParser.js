@@ -1,8 +1,11 @@
-﻿
+﻿import { LargePlaylistLoader } from '../../../core/services/playlist/LargePlaylistLoader.js';
 
 export class M3UParser {
+  constructor() {
+    this.largeLoader = new LargePlaylistLoader();
+  }
+
   async parse(source) {
-    
     try {
       const content = await this.resolveContent(source);
       
@@ -11,7 +14,6 @@ export class M3UParser {
       let currentItem = null;
       let itemIndex = 0;
 
-      
       for (const line of lines) {
         if (line.startsWith('#EXTINF:')) {
           const info = this.parseExtInf(line);
@@ -29,13 +31,10 @@ export class M3UParser {
         } else if (line.trim() && !line.startsWith('#') && currentItem) {
           currentItem.url = line.trim();
           currentItem.uniqueId = `item-${itemIndex++}-${Date.now()}`;
-          
-          
           items.push(currentItem);
           currentItem = null;
         }
       }
-
 
       return {
         type: 'm3u',
@@ -75,53 +74,65 @@ export class M3UParser {
       throw new Error('Fonte de playlist invalida. Use uma URL http/https ou conteudo M3U valido.');
     }
 
-    const endpoints = ['/api/proxy/m3u', '/api/m3u'];
-    let response = null;
-    let lastError = null;
+    // Usa o loader para arquivos grandes
+    try {
+      console.log('[M3UParser] Carregando playlist via LargePlaylistLoader');
+      const content = await this.largeLoader.loadPlaylist(source, (progress) => {
+        console.log(`[M3UParser] Progresso: ${progress.percent}% (${progress.chunks} chunks)`);
+      });
+      return content;
+    } catch (error) {
+      console.error('[M3UParser] Erro no LargePlaylistLoader, tentando fallback:', error.message);
+      
+      // Fallback: tenta os endpoints normais
+      const endpoints = ['/api/proxy/m3u', '/api/m3u'];
+      let response = null;
+      let lastError = null;
 
-    for (const endpoint of endpoints) {
-      try {
-        response = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ url: source })
-        });
+      for (const endpoint of endpoints) {
+        try {
+          response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ url: source })
+          });
 
-        if (response.status === 404) {
-          continue;
+          if (response.status === 404) {
+            continue;
+          }
+
+          break;
+        } catch (error) {
+          lastError = error;
         }
-
-        break;
-      } catch (error) {
-        lastError = error;
       }
-    }
 
-    if (!response) {
-      throw new Error(lastError?.message || 'Falha ao conectar com o proxy de playlist.');
-    }
+      if (!response) {
+        throw new Error(lastError?.message || 'Falha ao conectar com o proxy de playlist.');
+      }
 
-    if (!response.ok) {
-      let message = `Falha no proxy (${response.status})`;
-      try {
-        const errorData = await response.json();
-        if (errorData?.error) {
-          message = errorData.error;
+      if (!response.ok) {
+        let message = `Falha no proxy (${response.status})`;
+        try {
+          const errorData = await response.json();
+          if (errorData?.error) {
+            message = errorData.error;
+          }
+        } catch (_) {
         }
-      } catch (_) {
+        throw new Error(message);
       }
-      throw new Error(message);
+
+      const content = await response.text();
+
+      if (typeof content !== 'string' || !content.trim()) {
+        throw new Error('Resposta do proxy invalida ao carregar playlist.');
+      }
+
+      return content;
     }
-
-    const content = await response.text();
-
-    if (typeof content !== 'string' || !content.trim()) {
-      throw new Error('Resposta do proxy invalida ao carregar playlist.');
-    }
-
-    return content;
   }
 
   parseExtInf(line) {

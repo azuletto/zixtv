@@ -69,14 +69,11 @@ function isValidTarget(url) {
   }
 }
 
-function buildProxyUrl(targetUrl) {
-  return `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-}
-
 module.exports = async function handler(req, res) {
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Range');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -93,31 +90,61 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'URL invalida. Informe uma URL http/https.' });
     }
 
-    const proxyUrl = buildProxyUrl(targetUrl);
+    // Tamanho do chunk: 4MB (limite seguro da Vercel)
+    const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB
+    
+    // Pega o range do header ou query param
+    let start = 0;
+    const rangeHeader = req.headers.range || req.query.range;
+    
+    if (rangeHeader && rangeHeader.startsWith('bytes=')) {
+      const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
+      if (match) {
+        start = parseInt(match[1], 10);
+      }
+    }
 
-    const upstreamResponse = await fetch(proxyUrl, {
+    // Primeira requisição: tenta pegar o tamanho total e os primeiros bytes
+    const firstResponse = await fetch(targetUrl, {
       method: 'GET',
       redirect: 'follow',
       headers: {
         'User-Agent': 'ZixTV/1.0 (+https://zix-tv.vercel.app)',
-        Accept: '*/*'
+        'Accept': '*/*'
       }
     });
 
-    if (!upstreamResponse.ok) {
-      return res.status(upstreamResponse.status).json({
-        error: `Falha ao buscar playlist remota (${upstreamResponse.status})`
+    if (!firstResponse.ok) {
+      return res.status(firstResponse.status).json({
+        error: `Falha ao buscar playlist remota (${firstResponse.status})`
       });
     }
 
-    const content = await upstreamResponse.text();
+    const fullContent = await firstResponse.text();
+    const totalSize = fullContent.length;
 
-    if (!content || !content.trim()) {
-      return res.status(502).json({ error: 'A URL remota retornou conteudo vazio.' });
+    // Se o arquivo é pequeno (< 5MB), retorna tudo de uma vez
+    if (totalSize < 5 * 1024 * 1024) {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      return res.status(200).send(fullContent);
     }
 
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.status(200).send(content);
+    // Para arquivos grandes, retorna em chunks
+    const end = Math.min(start + CHUNK_SIZE, totalSize);
+    const chunk = fullContent.substring(start, end);
+    const hasMore = end < totalSize;
+
+    // Retorna como JSON para o frontend saber se tem mais
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.status(200).json({
+      data: chunk,
+      hasMore: hasMore,
+      nextStart: end,
+      total: totalSize,
+      start: start,
+      end: end
+    });
+
   } catch (error) {
     res.status(500).json({ error: `Erro no proxy M3U: ${error.message}` });
   }
