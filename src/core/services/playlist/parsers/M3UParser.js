@@ -74,6 +74,28 @@ export class M3UParser {
       throw new Error('Fonte de playlist invalida. Use uma URL http/https ou conteudo M3U valido.');
     }
 
+    // 🔥 TENTA PELO SERVICE WORKER PRIMEIRO 🔥
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      try {
+        console.log('[M3UParser] Tentando via Service Worker...');
+        const response = await fetch('/api/proxy-m3u', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: source })
+        });
+        
+        if (response.ok) {
+          const content = await response.text();
+          if (content && content.trim()) {
+            console.log('[M3UParser] Service Worker funcionou! Tamanho:', content.length);
+            return content;
+          }
+        }
+      } catch (error) {
+        console.log('[M3UParser] Service Worker falhou:', error.message);
+      }
+    }
+
     // Usa o loader para arquivos grandes
     try {
       console.log('[M3UParser] Carregando playlist via LargePlaylistLoader');

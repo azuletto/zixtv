@@ -90,37 +90,58 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'URL invalida. Informe uma URL http/https.' });
     }
 
-    // USA allorigins.win - MAIS ESTÁVEL
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-    
-    console.log('[Proxy] Buscando via allorigins:', targetUrl);
+    // Tenta vários proxies em sequência
+    const proxies = [
+      `https://cors-anywhere.herokuapp.com/${targetUrl}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+      `https://proxy.cors.sh/${targetUrl}`,
+      `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`
+    ];
 
-    const response = await fetch(proxyUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'ZixTV/1.0'
+    let lastError = null;
+
+    for (const proxyUrl of proxies) {
+      try {
+        console.log('[Proxy] Tentando:', proxyUrl.substring(0, 50) + '...');
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos
+
+        const response = await fetch(proxyUrl, {
+          method: 'GET',
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': '*/*'
+          }
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const content = await response.text();
+          
+          if (content && content.length > 0) {
+            console.log('[Proxy] Sucesso! Tamanho:', content.length, 'bytes');
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            return res.status(200).send(content);
+          }
+        } else {
+          console.log('[Proxy] Falhou com status:', response.status);
+        }
+      } catch (error) {
+        console.log('[Proxy] Erro:', error.message);
+        lastError = error;
       }
+    }
+
+    return res.status(408).json({ 
+      error: 'Todos os proxies falharam. A playlist pode ser muito grande ou inacessivel.',
+      details: lastError?.message 
     });
 
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: `Proxy retornou ${response.status}: ${response.statusText}`
-      });
-    }
-
-    const content = await response.text();
-
-    if (!content || content.length === 0) {
-      return res.status(502).json({ error: 'Proxy retornou conteúdo vazio' });
-    }
-
-    console.log('[Proxy] Sucesso! Tamanho:', content.length, 'bytes');
-
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.status(200).send(content);
-
   } catch (error) {
-    console.error('[Proxy] Erro:', error.message);
+    console.error('[Proxy] Erro fatal:', error.message);
     res.status(500).json({ error: `Erro no proxy: ${error.message}` });
   }
 };
