@@ -1,10 +1,15 @@
-
-
-import { swProxyService } from '../../network/SWProxyService';
-
 export class XtreamParser {
-  async fetchJsonViaSW(targetUrl) {
-    return swProxyService.fetchJson(targetUrl);
+  async fetchJsonDirect(targetUrl) {
+    const response = await fetch(targetUrl, {
+      method: 'GET',
+      cache: 'no-store'
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText || '<none>'}`);
+    }
+
+    return response.json();
   }
 
   async parse({ url, username, password, server }) {
@@ -63,7 +68,7 @@ export class XtreamParser {
   }
 
   async fetchUserInfo(baseUrl, username, password) {
-    const data = await this.fetchJsonViaSW(
+    const data = await this.fetchJsonDirect(
       `${baseUrl}/player_api.php?username=${username}&password=${password}`
     );
     if (data.user_info === undefined) {
@@ -73,21 +78,21 @@ export class XtreamParser {
   }
 
   async fetchLiveStreams(baseUrl, username, password) {
-    const data = await this.fetchJsonViaSW(
+    const data = await this.fetchJsonDirect(
       `${baseUrl}/player_api.php?username=${username}&password=${password}&action=get_live_streams`
     );
     return Array.isArray(data) ? data : [];
   }
 
   async fetchVodStreams(baseUrl, username, password) {
-    const data = await this.fetchJsonViaSW(
+    const data = await this.fetchJsonDirect(
       `${baseUrl}/player_api.php?username=${username}&password=${password}&action=get_vod_streams`
     );
     return Array.isArray(data) ? data : [];
   }
 
   async fetchSeries(baseUrl, username, password) {
-    const data = await this.fetchJsonViaSW(
+    const data = await this.fetchJsonDirect(
       `${baseUrl}/player_api.php?username=${username}&password=${password}&action=get_series`
     );
     return Array.isArray(data) ? data : [];

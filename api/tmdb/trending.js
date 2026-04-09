@@ -20,24 +20,24 @@ module.exports = async function handler(req, res) {
     
     const windows = timeWindow === 'all' ? ['day', 'week'] : [timeWindow];
     const pages = [1, 2, 3]; 
-    
-    const promises = [];
+
+    const requests = [];
     
     for (const window of windows) {
       for (const p of pages) {
-        promises.push(fetchTMDB(`/trending/movie/${window}`, { page: p }));
-        promises.push(fetchTMDB(`/trending/tv/${window}`, { page: p }));
+        requests.push({ type: 'movie', promise: fetchTMDB(`/trending/movie/${window}`, { page: p }) });
+        requests.push({ type: 'tv', promise: fetchTMDB(`/trending/tv/${window}`, { page: p }) });
       }
     }
     
-    const results = await Promise.all(promises);
+    const results = await Promise.all(requests.map((reqItem) => reqItem.promise));
     
     
     let allItems = [];
     
-    results.forEach(data => {
+    results.forEach((data, index) => {
       if (data.results) {
-        const type = data.results[0]?.media_type || (data.page === 1 ? 'movie' : 'tv');
+        const type = requests[index]?.type || data.results[0]?.media_type || 'movie';
         const formatted = data.results.map(item => formatMediaItem(item, item.media_type || type));
         allItems.push(...formatted);
       }

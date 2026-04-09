@@ -5,6 +5,7 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  envPrefix: ['VITE_', 'TMDB_'],
   
   root: path.resolve(__dirname, '.'), 
   publicDir: path.resolve(__dirname, 'public'), 

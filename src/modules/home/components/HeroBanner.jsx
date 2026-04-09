@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { PlayIcon, InformationCircleIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 
 const normalizeDescription = (value, fallback = 'Sinopse não disponível') => {
@@ -14,14 +14,53 @@ const normalizeDescription = (value, fallback = 'Sinopse não disponível') => {
     .trim() || fallback;
 };
 
+const getItemImage = (item = {}) => item.backdropUrl || item.posterUrl || '';
+
+const HeroPlaceholder = ({ showLabel = false }) => (
+  <div className="absolute inset-0 overflow-hidden">
+    <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-950 to-black" />
+    <div
+      className="absolute inset-0 opacity-60"
+      style={{
+        backgroundImage: `
+          radial-gradient(circle at 18% 22%, rgba(220, 38, 38, 0.22), transparent 26%),
+          radial-gradient(circle at 76% 28%, rgba(255, 255, 255, 0.08), transparent 20%),
+          radial-gradient(circle at 60% 72%, rgba(220, 38, 38, 0.12), transparent 28%)
+        `
+      }}
+    />
+    <div
+      className="absolute inset-0 opacity-20"
+      style={{
+        backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0)`,
+        backgroundSize: '44px 44px'
+      }}
+    />
+
+    {showLabel && (
+      <div className="absolute top-5 right-5 z-20 rounded-md border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-zinc-300">
+        Sem Imagem
+      </div>
+    )}
+  </div>
+);
+
 const HeroBanner = ({ items = [], onPlay, onMoreInfo }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [hasImageError, setHasImageError] = useState(false);
   
   const safeItems = Array.isArray(items) ? items : [];
   const hasItems = safeItems.length > 0;
   const currentItem = hasItems ? safeItems[currentIndex % safeItems.length] : null;
+  const currentImage = getItemImage(currentItem || {});
+  const voteAverage = Number(currentItem?.voteAverage);
+
+  useEffect(() => {
+    setImageLoaded(false);
+    setHasImageError(false);
+  }, [currentItem?.id, currentImage]);
 
   useEffect(() => {
     if (safeItems.length <= 1) return;
@@ -48,43 +87,43 @@ const HeroBanner = ({ items = [], onPlay, onMoreInfo }) => {
     >
       {}
       <div className="absolute inset-0 overflow-hidden">
-        {!imageLoaded && (
-          <div className="absolute inset-0 bg-zinc-900 animate-pulse" />
+        {(!currentImage || !imageLoaded || hasImageError) && (
+          <HeroPlaceholder showLabel={!currentImage || hasImageError} />
         )}
-        <img
-          src={currentItem.backdropUrl}
-          alt={currentItem.title || currentItem.name}
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 z-10 ${
-            imageLoaded ? 'opacity-100' : 'opacity-0'
-          }`}
-          style={{
-            filter: 'blur(3px) saturate(1.08) brightness(0.96)',
-            transform: 'scale(1.06)',
-            objectPosition: 'center'
-          }}
-          onLoad={() => setImageLoaded(true)}
-          onError={(e) => {
-            e.target.src = 'https://via.placeholder.com/1920x1080/1a1a1a/666666?text=Sem+Imagem';
-            setImageLoaded(true);
-          }}
-        />
+        {currentImage && !hasImageError && (
+          <img
+            src={currentImage}
+            alt={currentItem.title || currentItem.name}
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 z-10 ${
+              imageLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
+            style={{
+              filter: 'blur(3px) saturate(1.08) brightness(0.96)',
+              transform: 'scale(1.06)',
+              objectPosition: 'center'
+            }}
+            onLoad={() => setImageLoaded(true)}
+            onError={() => {
+              setHasImageError(true);
+              setImageLoaded(false);
+            }}
+          />
+        )}
         <div className="absolute inset-0 bg-blue-500/12 mix-blend-screen pointer-events-none z-20" />
         <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/80 to-transparent z-30" />
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/50 to-transparent z-30" />
       </div>
 
       {}
-      <div className={`absolute bottom-0 left-0 right-0 p-4 sm:p-8 md:p-12 lg:p-16 max-w-3xl transition-opacity duration-500 z-40 ${
-        imageLoaded ? 'opacity-100' : 'opacity-0'
-      }`}>
+      <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-8 md:p-12 lg:p-16 max-w-3xl transition-opacity duration-500 z-40 opacity-100">
         <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-2 sm:mb-3 md:mb-4 line-clamp-2">
           {currentItem.title || currentItem.name}
         </h1>
         
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4 text-white mb-2 sm:mb-3 md:mb-4">
-          {currentItem.voteAverage && (
+          {Number.isFinite(voteAverage) && (
             <span className="bg-green-600 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-xs sm:text-sm font-medium">
-              {currentItem.voteAverage.toFixed(1)}
+              {voteAverage.toFixed(1)}
             </span>
           )}
           {currentItem.year && (

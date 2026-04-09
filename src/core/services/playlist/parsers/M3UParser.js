@@ -1,4 +1,30 @@
 ﻿export class M3UParser {
+  async fetchM3UContent(source) {
+    const response = await fetch(source, {
+      method: 'GET',
+      cache: 'no-store'
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText || '<none>'}`);
+    }
+
+    return response.text();
+  }
+
+  async fetchM3UContentDirect(source) {
+    const response = await fetch(source, {
+      method: 'GET',
+      cache: 'no-store'
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText || '<none>'}`);
+    }
+
+    return response.text();
+  }
+
   async parse(source) {
     try {
       const content = await this.resolveContent(source);
@@ -59,6 +85,20 @@
     }
   }
 
+  isLikelyCloudflareErrorPage(content) {
+    if (typeof content !== 'string') return false;
+    const text = content.toLowerCase();
+    return text.includes('cloudflare') && (text.includes('error 521') || text.includes('web server is down'));
+  }
+
+  isValidM3UContent(content) {
+    if (typeof content !== 'string') return false;
+    const trimmed = content.trim();
+    if (!trimmed) return false;
+    if (this.isLikelyCloudflareErrorPage(trimmed)) return false;
+    return this.isLikelyM3UContent(trimmed);
+  }
+
   async resolveContent(source) {
     // Se já é conteúdo M3U, retorna direto
     if (this.isLikelyM3UContent(source)) {
@@ -70,25 +110,33 @@
       throw new Error('Fonte de playlist invalida. Use uma URL http/https ou conteudo M3U valido.');
     }
 
-    // USA A API DA VERCEL (backend) - SOLUÇÃO DEFINITIVA
+    // Requisicao direta para a URL da playlist
     try {
-      console.log('[M3UParser] Baixando via API Vercel:', source);
+      console.log('[M3UParser] Baixando direto:', source);
       
-      const response = await fetch('/api/m3u', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: source })
-      });
+      let content;
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || `HTTP ${response.status}`);
+      try {
+        content = await this.fetchM3UContent(source);
+      } catch (error) {
+        const isDev = Boolean(import.meta.env.DEV);
+        const isUpstream521 = /HTTP\s*521/i.test(error?.message || '');
+
+        if (isDev && isUpstream521) {
+          // Em desenvolvimento, tenta o navegador diretamente para recuperar casos
+          // em que o servidor remoto bloqueia IP de datacenter, mas libera IP residencial.
+          content = await this.fetchM3UContentDirect(source);
+        } else {
+          throw error;
+        }
       }
-
-      const content = await response.text();
 
       if (!content || !content.trim()) {
         throw new Error('Playlist vazia');
+      }
+
+      if (!this.isValidM3UContent(content)) {
+        throw new Error('A URL nao retornou uma playlist M3U valida');
       }
 
       console.log('[M3UParser] Playlist carregada:', content.length, 'bytes');

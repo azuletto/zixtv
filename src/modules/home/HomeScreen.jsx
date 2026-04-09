@@ -1,43 +1,13 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { usePlaylist } from '../../shared/hooks/usePlaylist';
 import { tmdbService } from '../../core/services/tmdb/TMDBService';
 import WelcomeScreen from './components/WelcomeScreen';
 import HeroBanner from './components/HeroBanner';
 import CategoryRow from './components/CategoryRow';
-
-const LoadingScreen = () => (
-  <div className="fixed inset-0 bg-zinc-950 flex items-center justify-center z-50">
-    <div className="absolute inset-0">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-red-600/10 via-zinc-950 to-zinc-950" />
-      <div className="absolute inset-0 opacity-30" style={{
-        backgroundImage: `radial-gradient(circle at 1px 1px, rgb(255 255 255 / 0.02) 1px, transparent 0)`,
-        backgroundSize: '48px 48px'
-      }} />
-    </div>
-    <div className="relative z-10 text-center">
-      <div 
-        className="mx-auto mb-4"
-        style={{
-          width: '48px',
-          height: '48px',
-          border: '4px solid rgba(220, 38, 38, 0.2)',
-          borderTopColor: '#dc2626',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}
-      />
-      <p className="text-zinc-500">Carregando...</p>
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
-    </div>
-  </div>
-);
+import LoadingSpinner from '../../shared/components/Loaders/Spinner';
 
 const EmptyStateScreen = () => (
   <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
@@ -123,7 +93,8 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
   
   const [matchedTrending, setMatchedTrending] = useState([]);
   const [fallbackTrending, setFallbackTrending] = useState([]);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [heroTrending, setHeroTrending] = useState([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(false);
   
   const playlistsArray = Array.isArray(playlists) ? playlists : [];
   const hasPlaylist = playlistsArray.length > 0;
@@ -162,6 +133,7 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
       if (cached && (Date.now() - cached.timestamp) < HOME_TRENDING_CACHE_TTL) {
         setMatchedTrending(cached.items || []);
         setFallbackTrending(cached.fallbackItems || []);
+        setHeroTrending(cached.heroItems || []);
         setIsInitialLoading(false);
         return;
       }
@@ -169,7 +141,14 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
       setIsInitialLoading(true);
       
       try {
-        const week = await tmdbService.getTrending('week');
+        const [hero, week] = await Promise.all([
+          tmdbService.getHeroContent(),
+          tmdbService.getTrending('week')
+        ]);
+
+        const heroItems = (hero || []).filter((item) => item?.backdropUrl || item?.posterUrl);
+        setHeroTrending(heroItems);
+
         const trending = week || [];
         const fallbackItems = trending.slice(0, 20);
         setFallbackTrending(fallbackItems);
@@ -208,9 +187,7 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
               userItem: userMatch.item,
               userType: userMatch.type,
               logo: userMatch.item.tvg?.logo || userMatch.item.logo,
-              url: userMatch.item.url,
-              posterUrl: userMatch.item.tvg?.logo || userMatch.item.logo || trend.posterUrl,
-              backdropUrl: userMatch.item.tvg?.logo || userMatch.item.logo || trend.backdropUrl
+              url: userMatch.item.url
             });
           }
         }
@@ -218,6 +195,7 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
         homeTrendingCache.set(activePlaylistId, {
           items: matched,
           fallbackItems,
+          heroItems,
           timestamp: Date.now()
         });
 
@@ -228,6 +206,7 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
       } catch (error) {
         if (!isCancelled) {
           setMatchedTrending([]);
+          setHeroTrending([]);
         }
       } finally {
         if (!isCancelled) {
@@ -260,10 +239,8 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
 
   
   const heroItems = useMemo(() => {
-    const source = matchedTrending.length > 0 ? matchedTrending : fallbackTrending;
-    const withImage = source.filter(item => item.backdropUrl);
-    return withImage.slice(0, 5);
-  }, [matchedTrending, fallbackTrending]);
+    return heroTrending.slice(0, 5);
+  }, [heroTrending]);
 
   const trendingForDisplay = matchedTrending.length > 0 ? matchedTrending : fallbackTrending;
 
@@ -284,8 +261,21 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
   }, [userSeries]);
 
   
-  if (isInitialLoading) {
-    return <LoadingScreen />;
+  if (playlistLoading || (isInitialLoading && hasPlaylist)) {
+    return (
+      <div className="min-h-screen bg-zinc-950 w-full overflow-x-hidden">
+        <div className="fixed inset-0" style={{ left: sidebarWidth }}>
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-red-600/5 via-zinc-950 to-zinc-950" />
+          <div className="absolute inset-0 opacity-20" style={{
+            backgroundImage: `radial-gradient(circle at 1px 1px, rgb(255 255 255 / 0.02) 1px, transparent 0)`,
+            backgroundSize: '48px 48px'
+          }} />
+        </div>
+        <div className="relative z-10 min-h-screen flex items-center justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      </div>
+    );
   }
   
   if (!hasPlaylist) {
@@ -396,58 +386,72 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
       </div>
 
       <div className="relative z-10 w-full">
-        <HeroBanner
-          items={heroItems}
-          onPlay={handleHeroPlay}
-          onMoreInfo={handleHeroMoreInfo}
-        />
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+        >
+          <HeroBanner
+            items={heroItems}
+            onPlay={handleHeroPlay}
+            onMoreInfo={handleHeroMoreInfo}
+          />
+        </motion.div>
         
         <div className="w-full py-6 space-y-8">
           {}
           {trendingForDisplay.length > 0 && (
-            <CategoryRow 
-              title="Em Alta"
-              type="tmdb"
-              items={trendingForDisplay.slice(0, 20)}
-              viewAllPath="/trending"
-              onItemSelect={handleHomeCardSelect}
-            />
+            <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.08 }}>
+              <CategoryRow 
+                title="Em Alta"
+                type="tmdb"
+                items={trendingForDisplay.slice(0, 20)}
+                viewAllPath="/trending"
+                onItemSelect={handleHomeCardSelect}
+              />
+            </motion.div>
           )}
           
           {}
           {userMovies.length > 0 && (
-            <CategoryRow 
-              title="Filmes"
-              type="movies"
-              items={userMovies}
-              categories={movieCategories}
-              viewAllPath="/movies"
-              onItemSelect={handleHomeCardSelect}
-            />
+            <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.12 }}>
+              <CategoryRow 
+                title="Filmes"
+                type="movies"
+                items={userMovies}
+                categories={movieCategories}
+                viewAllPath="/movies"
+                onItemSelect={handleHomeCardSelect}
+              />
+            </motion.div>
           )}
           
           {}
           {userSeries.length > 0 && (
-            <CategoryRow 
-              title="Séries"
-              type="series"
-              items={userSeries}
-              categories={seriesCategories}
-              viewAllPath="/series"
-              onItemSelect={handleHomeCardSelect}
-            />
+            <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.16 }}>
+              <CategoryRow 
+                title="Séries"
+                type="series"
+                items={userSeries}
+                categories={seriesCategories}
+                viewAllPath="/series"
+                onItemSelect={handleHomeCardSelect}
+              />
+            </motion.div>
           )}
           
           {}
           {liveByGroup.length > 0 && (
-            <CategoryRow 
-              title="Canais Ao Vivo"
-              type="live"
-              items={visibleLiveChannels.slice(0, 100)}
-              categories={liveByGroup.map(g => g.name)}
-              viewAllPath="/live"
-              onItemSelect={handleHomeCardSelect}
-            />
+            <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.2 }}>
+              <CategoryRow 
+                title="Canais Ao Vivo"
+                type="live"
+                items={visibleLiveChannels.slice(0, 100)}
+                categories={liveByGroup.map(g => g.name)}
+                viewAllPath="/live"
+                onItemSelect={handleHomeCardSelect}
+              />
+            </motion.div>
           )}
         </div>
       </div>

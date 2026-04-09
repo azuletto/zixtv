@@ -241,6 +241,29 @@ const LiveScreen = () => {
   const containerRef = useRef(null);
   const searchInputRef = useRef(null);
   const itemsPerPage = 48;
+  const contentKey = `${viewMode}-${currentPage}-${selectedCategory}-${searchQuery.trim()}`;
+
+  const staggerContainer = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.015,
+        delayChildren: 0.03
+      }
+    },
+    exit: {
+      opacity: 0,
+      transition: {
+        duration: 0.16
+      }
+    }
+  };
+
+  const staggerItem = {
+    hidden: { opacity: 0, y: 12 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.22, ease: 'easeOut' } }
+  };
 
   
   const { channelsByCategory, categories, totalChannels } = useMemo(() => {
@@ -577,51 +600,77 @@ const LiveScreen = () => {
             </div>
           ) : (
             <>
-              {viewMode === 'grid' ? (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
-                  {visibleItems_.map((item, index) => {
-                    if (item.type === 'header') {
+              <AnimatePresence mode="wait">
+                {viewMode === 'grid' ? (
+                  <motion.div
+                    key={`grid-${contentKey}`}
+                    variants={staggerContainer}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2"
+                  >
+                    {visibleItems_.map((item, index) => {
+                      if (item.type === 'header') {
+                        return (
+                          <motion.div
+                            key={`header-${item.category}`}
+                            variants={staggerItem}
+                            className="col-span-full mt-3 first:mt-0"
+                          >
+                            <h2 className="text-sm font-semibold text-white mb-1.5 pb-0.5 border-b border-zinc-800">
+                              {item.category}
+                              <span className="ml-1.5 text-xs text-gray-500">({item.count})</span>
+                            </h2>
+                          </motion.div>
+                        );
+                      }
                       return (
-                        <div key={`header-${item.category}`} className="col-span-full mt-3 first:mt-0">
-                          <h2 className="text-sm font-semibold text-white mb-1.5 pb-0.5 border-b border-zinc-800">
-                            {item.category}
-                            <span className="ml-1.5 text-xs text-gray-500">({item.count})</span>
-                          </h2>
-                        </div>
+                        <motion.div key={item.id || item.url || index} variants={staggerItem}>
+                          <ChannelCard
+                            channel={item}
+                            onSelect={handleChannelSelect}
+                          />
+                        </motion.div>
                       );
-                    }
-                    return (
-                      <ChannelCard
-                        key={item.id || item.url || index}
-                        channel={item}
-                        onSelect={handleChannelSelect}
-                      />
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {visibleItems_.map((item, index) => {
-                    if (item.type === 'header') {
+                    })}
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key={`list-${contentKey}`}
+                    variants={staggerContainer}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    className="space-y-1"
+                  >
+                    {visibleItems_.map((item, index) => {
+                      if (item.type === 'header') {
+                        return (
+                          <motion.div
+                            key={`header-${item.category}`}
+                            variants={staggerItem}
+                            className="pt-2 first:pt-0"
+                          >
+                            <h2 className="text-sm font-semibold text-white pb-0.5 border-b border-zinc-800">
+                              {item.category}
+                              <span className="ml-1.5 text-xs text-gray-500">({item.count})</span>
+                            </h2>
+                          </motion.div>
+                        );
+                      }
                       return (
-                        <div key={`header-${item.category}`} className="pt-2 first:pt-0">
-                          <h2 className="text-sm font-semibold text-white pb-0.5 border-b border-zinc-800">
-                            {item.category}
-                            <span className="ml-1.5 text-xs text-gray-500">({item.count})</span>
-                          </h2>
-                        </div>
+                        <motion.div key={item.id || item.url || index} variants={staggerItem}>
+                          <ChannelListItem
+                            channel={item}
+                            onSelect={handleChannelSelect}
+                          />
+                        </motion.div>
                       );
-                    }
-                    return (
-                      <ChannelListItem
-                        key={item.id || item.url || index}
-                        channel={item}
-                        onSelect={handleChannelSelect}
-                      />
-                    );
-                  })}
-                </div>
-              )}
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-2 mt-8 pb-4">

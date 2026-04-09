@@ -13,14 +13,18 @@ import '@fontsource/inter/700.css';
 import '@fontsource/inter/800.css';
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(registration => {
-        console.log('Service Worker registrado com sucesso:', registration.scope);
-      })
-      .catch(error => {
-        console.log('Falha ao registrar Service Worker:', error);
-      });
+  window.addEventListener('load', async () => {
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+
+      if ('caches' in window) {
+        const cacheKeys = await caches.keys();
+        await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+      }
+    } catch (error) {
+      console.log('Falha ao limpar Service Worker antigo:', error);
+    }
   });
 }
 

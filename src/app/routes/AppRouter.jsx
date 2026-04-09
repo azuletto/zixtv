@@ -96,7 +96,7 @@ const AppRouter = () => {
       >
         <Suspense fallback={
           <div className="flex items-center justify-center h-screen">
-            <LoadingSpinner size="large" />
+            <LoadingSpinner size="lg" />
           </div>
         }>
           <Routes>

@@ -3,22 +3,33 @@ import React, { useState, useEffect } from 'react';
 import { X, Upload, Link, Server, Eye, EyeOff, Shield, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePlaylist } from '../../hooks/usePlaylist';
+import ModernLoader from '../Loaders/ModernLoader';
 
-const ProcessingOverlay = () => (
+const ProcessingModal = () => (
   <motion.div
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     exit={{ opacity: 0 }}
     transition={{ duration: 0.15 }}
-    className="absolute inset-0 bg-zinc-900/95 backdrop-blur-sm rounded-xl flex items-center justify-center z-20"
+    className="fixed inset-0 z-[55] flex items-center justify-center p-4"
   >
-    <div className="text-center">
-      <div className="relative mb-3">
-        <div className="w-10 h-10 border-2 border-red-600/20 border-t-red-600 rounded-full animate-spin mx-auto" />
-      </div>
-      <p className="text-zinc-300 font-medium text-sm">Processando playlist...</p>
-      <p className="text-xs text-zinc-500 mt-1 max-w-[180px]">Isso pode levar alguns segundos</p>
-    </div>
+    <div className="absolute inset-0 bg-black/80" />
+    <motion.div
+      initial={{ scale: 0.96, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      exit={{ scale: 0.96, opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      className="relative w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl p-5"
+    >
+      <ModernLoader
+        variant="compact"
+        title="Processando playlist"
+        subtitle="Validando e organizando os itens"
+        steps={['Lendo arquivo', 'Organizando conteúdo', 'Salvando dados']}
+        activeStep={1}
+        showSteps={false}
+      />
+    </motion.div>
   </motion.div>
 );
 
@@ -477,7 +488,7 @@ const AddPlaylistModal = ({ isOpen, onClose, initialType = null }) => {
   return (
     <>
       <AnimatePresence>
-        {isOpen && (
+        {isOpen && !isProcessing && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -495,10 +506,6 @@ const AddPlaylistModal = ({ isOpen, onClose, initialType = null }) => {
                 transition={{ duration: 0.15 }}
                 className="relative bg-zinc-900 rounded-xl w-full max-w-md shadow-2xl"
               >
-                <AnimatePresence>
-                  {isProcessing && <ProcessingOverlay />}
-                </AnimatePresence>
-
                 <div className="flex items-center justify-between p-4 border-b border-zinc-800">
                   <h2 className="text-lg font-bold text-white">Adicionar Playlist</h2>
                   <button
@@ -559,6 +566,8 @@ const AddPlaylistModal = ({ isOpen, onClose, initialType = null }) => {
             </div>
           </motion.div>
         )}
+
+        {isOpen && isProcessing && <ProcessingModal />}
       </AnimatePresence>
 
       <PrivacyTermsModal 

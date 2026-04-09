@@ -1,7 +1,6 @@
 
 
 import React from 'react';
-import { motion } from 'framer-motion';
 
 const Spinner = ({ size = 'md', color = 'red' }) => {
   const sizes = {
@@ -15,7 +14,7 @@ const Spinner = ({ size = 'md', color = 'red' }) => {
   };
 
   const colors = {
-    red: 'border-red-600',
+    red: 'border-red-600/30 border-t-red-600',
     white: 'border-white',
     gray: 'border-gray-400'
   };
@@ -24,11 +23,9 @@ const Spinner = ({ size = 'md', color = 'red' }) => {
   const colorClass = colors[color] || colors.red;
 
   return (
-    <motion.div
-      animate={{ rotate: 360 }}
-      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-      className={`${sizeClass} border-4 border-t-transparent ${colorClass} rounded-full`}
-    />
+    <div className={`relative ${sizeClass}`}>
+      <div className={`absolute inset-0 rounded-full border-4 ${colorClass} animate-spin`} />
+    </div>
   );
 };
 

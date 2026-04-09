@@ -1,7 +1,4 @@
 ﻿
-
-import { swProxyService } from '../../network/SWProxyService';
-
 export class EPGParser {
   isLikelyXmlContent(source) {
     if (typeof source !== 'string') return false;
@@ -10,15 +7,24 @@ export class EPGParser {
     return trimmed.startsWith('<') || trimmed.includes('<?xml');
   }
 
-  async fetchViaSW(targetUrl) {
-    return swProxyService.fetchText(targetUrl);
+  async fetchDirect(targetUrl) {
+    const response = await fetch(targetUrl, {
+      method: 'GET',
+      cache: 'no-store'
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText || '<none>'}`);
+    }
+
+    return response.text();
   }
 
   async parse(source) {
     try {
       const xmlText = this.isLikelyXmlContent(source)
         ? source
-        : await this.fetchViaSW(source);
+        : await this.fetchDirect(source);
       
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
