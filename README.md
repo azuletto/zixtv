@@ -5,11 +5,14 @@
 <p><b>A modern, open-source IPTV management platform & player.</b></p>  <p></p>
 
 <p>
-    <img src="https://img.shields.io/badge/version-1.0.0--alpha-7B61FF?style=for-the-badge" alt="Version" />
-    <img src="https://img.shields.io/github/license/azuletto/ZixTV?style=for-the-badge" alt="License" />
-    <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
-    <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind" />
-  </p>
+  <img src="https://img.shields.io/badge/version-1.0.0--alpha-7B61FF?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/github/license/azuletto/ZixTV?style=for-the-badge" alt="License" />
+  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind" />
+  
+  <img src="https://img.shields.io/badge/AWS-Cloud-FF9900?style=for-the-badge&logo=amazon-aws&logoColor=white" alt="AWS Cloud" />
+  <img src="https://img.shields.io/badge/Playlist-.m3u-blue?style=for-the-badge" alt="M3U Support" />
+</p>
   
 <div align="center">
    <img width=100% src="https://capsule-render.vercel.app/api?type=waving&height=100&color=cc0000" />
