@@ -36,48 +36,197 @@ const HOME_TRENDING_CACHE_TTL = 5 * 60 * 1000;
 const homeTrendingCache = new Map();
 const homeLookupCache = new Map();
 
+const HOME_TITLE_STOP_WORDS = new Set([
+  'a', 'as', 'o', 'os', 'de', 'da', 'do', 'das', 'dos', 'e', 'em', 'na', 'no', 'nas', 'nos',
+  'the', 'and', 'of', 'to', 'for', 'part', 'season', 'episode', 'episodio', 'episódio',
+  'filme', 'filmes', 'serie', 'series', 'movie', 'movies', 'tv'
+]);
+
+const escapeRegExp = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const normalizeLookupText = (value) => {
   if (!value) return '';
   return value
     .toLowerCase()
     .trim()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 };
 
-const buildHomeLookupMaps = (userMovies = [], userSeries = []) => {
-  const moviesMap = new Map();
-  const seriesMap = new Map();
+const buildFlexibleTitleRegex = (value) => {
+  const normalized = normalizeLookupText(value);
+  if (!normalized) return null;
 
-  userMovies.forEach((movie) => {
-    const logoUrl = movie.tvg?.logo || movie.logo;
-    const tmdbId = movie.tmdbImageId || movie.tvg?.tmdbImageId || extractTMDBIdFromUrl(logoUrl);
+  const tokens = normalized
+    .split(' ')
+    .filter((token) => token && !HOME_TITLE_STOP_WORDS.has(token));
 
-    if (tmdbId) {
-      moviesMap.set(`movie_id_${tmdbId}`, { item: movie, type: 'movie' });
+  if (!tokens.length) return null;
+
+  return new RegExp(tokens.map(escapeRegExp).join('[\\s\\W_]*'), 'i');
+};
+
+const extractSearchAliases = (item = {}) => {
+  const aliases = [
+    item.name,
+    item.title,
+    item.seriesName,
+    item.originalName,
+    item.originalTitle,
+    item.metadata?.title,
+    item.metadata?.name,
+    item.metadata?.seriesName,
+    item.tvg?.name
+  ]
+    .map(normalizeLookupText)
+    .filter(Boolean);
+
+  return Array.from(new Set(aliases));
+};
+
+const buildSearchIndex = (items = []) => {
+  return items.map((item) => {
+    const aliases = extractSearchAliases(item);
+    return {
+      item,
+      aliases,
+      regexes: aliases.map(buildFlexibleTitleRegex).filter(Boolean),
+      tmdbId: item.tmdbImageId || item.tvg?.tmdbImageId || extractTMDBIdFromUrl(item.tvg?.logo || item.logo)
+    };
+  });
+};
+
+const extractTMDBAliases = (item = {}) => {
+  return Array.from(new Set([
+    item.title,
+    item.name,
+    item.original_title,
+    item.original_name,
+    item.displayTitle
+  ]
+    .map(normalizeLookupText)
+    .filter(Boolean)));
+};
+
+const scoreIndexMatch = (tmdbItem, indexedItem) => {
+  if (!tmdbItem || !indexedItem) return 0;
+
+  const tmdbAliases = extractTMDBAliases(tmdbItem);
+  if (tmdbAliases.length === 0) return 0;
+
+  const tmdbRegexes = tmdbAliases.map(buildFlexibleTitleRegex).filter(Boolean);
+  const tmdbTokenSet = new Set(tmdbAliases.flatMap((alias) => alias.split(' ').filter(Boolean)));
+
+  if (tmdbItem.posterUrl) {
+    const posterId = extractTMDBIdFromUrl(tmdbItem.posterUrl);
+    if (posterId && indexedItem.tmdbId && posterId === indexedItem.tmdbId) {
+      return 100;
     }
+  }
 
-    const name = (movie.name || movie.title || '').toLowerCase().trim();
-    const normalized = normalizeLookupText(name);
-    moviesMap.set(`movie_name_${name}`, { item: movie, type: 'movie' });
-    moviesMap.set(`movie_name_${normalized}`, { item: movie, type: 'movie' });
+  if (tmdbAliases.some((alias) => indexedItem.aliases.includes(alias))) {
+    return 95;
+  }
+
+  if (tmdbRegexes.some((regex) => indexedItem.aliases.some((alias) => regex.test(alias)))) {
+    return 90;
+  }
+
+  let overlapScore = 0;
+  indexedItem.aliases.forEach((alias) => {
+    const aliasTokens = alias.split(' ').filter(Boolean);
+    const overlap = aliasTokens.filter((token) => tmdbTokenSet.has(token)).length;
+    if (overlap > overlapScore) {
+      overlapScore = overlap;
+    }
   });
 
-  userSeries.forEach((serie) => {
-    const logoUrl = serie.tvg?.logo || serie.logo;
-    const tmdbId = serie.tmdbImageId || serie.tvg?.tmdbImageId || extractTMDBIdFromUrl(logoUrl);
+  return overlapScore > 1 ? 50 + overlapScore : 0;
+};
 
-    if (tmdbId) {
-      seriesMap.set(`series_id_${tmdbId}`, { item: serie, type: 'series' });
+const buildResolvedHomeItem = (playlistItem, tmdbItem = null) => {
+  if (!playlistItem) return null;
+
+  const title = playlistItem.name || playlistItem.title || playlistItem.seriesName || tmdbItem?.title || tmdbItem?.name || '';
+  const posterUrl = playlistItem.tvg?.logo || playlistItem.logo || tmdbItem?.posterUrl || null;
+  const backdropUrl = tmdbItem?.backdropUrl || tmdbItem?.posterUrl || playlistItem.tvg?.logo || playlistItem.logo || null;
+
+  return {
+    ...playlistItem,
+    name: title,
+    title,
+    posterUrl,
+    backdropUrl,
+    voteAverage: tmdbItem?.voteAverage ?? playlistItem.voteAverage,
+    overview: tmdbItem?.overview || playlistItem.overview || '',
+    year: tmdbItem?.year || playlistItem.year,
+    prefetchedTMDBData: tmdbItem,
+    tmdbData: tmdbItem,
+    source: tmdbItem ? 'tmdb-match' : 'playlist-fallback'
+  };
+};
+
+const pickFallbackPlaylistItem = ({ preferredType, usedIds, moviesIndex, seriesIndex, allIndex }) => {
+  const pools = [
+    preferredType === 'movie' ? moviesIndex : preferredType === 'tv' ? seriesIndex : [],
+    allIndex
+  ];
+
+  for (const pool of pools) {
+    const candidate = pool.find(({ item }) => !usedIds.has(item.id));
+    if (candidate) return candidate;
+  }
+
+  return null;
+};
+
+const resolveHomeDisplayItems = ({ tmdbItems = [], preferredType, moviesIndex, seriesIndex, allIndex, usedIds }) => {
+  const primaryPool = preferredType === 'movie' ? moviesIndex : preferredType === 'tv' ? seriesIndex : allIndex;
+
+  return tmdbItems.reduce((resolved, tmdbItem) => {
+    const targetType = tmdbItem?.type === 'tv' ? 'tv' : 'movie';
+    const typePool = targetType === 'movie' ? moviesIndex : seriesIndex;
+    const searchPools = [typePool, primaryPool, allIndex].filter((pool, index, self) => pool && self.indexOf(pool) === index);
+
+    let bestMatch = null;
+    let bestScore = 0;
+
+    for (const pool of searchPools) {
+      for (const indexedItem of pool) {
+        if (usedIds.has(indexedItem.item.id)) continue;
+
+        const score = scoreIndexMatch(tmdbItem, indexedItem);
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = indexedItem;
+        }
+      }
     }
 
-    const name = (serie.name || serie.title || serie.seriesName || '').toLowerCase().trim();
-    const normalized = normalizeLookupText(name);
-    seriesMap.set(`series_name_${name}`, { item: serie, type: 'series' });
-    seriesMap.set(`series_name_${normalized}`, { item: serie, type: 'series' });
-  });
+    if (bestMatch && bestScore >= 80) {
+      usedIds.add(bestMatch.item.id);
+      resolved.push(buildResolvedHomeItem(bestMatch.item, tmdbItem));
+      return resolved;
+    }
 
-  return { moviesMap, seriesMap };
+    const fallback = pickFallbackPlaylistItem({
+      preferredType: targetType,
+      usedIds,
+      moviesIndex,
+      seriesIndex,
+      allIndex
+    });
+
+    if (fallback) {
+      usedIds.add(fallback.item.id);
+      resolved.push(buildResolvedHomeItem(fallback.item, null));
+    }
+
+    return resolved;
+  }, []);
 };
 
 const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
@@ -92,7 +241,6 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
   } = usePlaylist();
   
   const [matchedTrending, setMatchedTrending] = useState([]);
-  const [fallbackTrending, setFallbackTrending] = useState([]);
   const [heroTrending, setHeroTrending] = useState([]);
   const [isInitialLoading, setIsInitialLoading] = useState(false);
   
@@ -106,13 +254,19 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
   const activePlaylistId = activePlaylist?.id || 'no-playlist';
 
   const homeLookupKey = `${activePlaylistId}|m:${userMovies.length}|s:${userSeries.length}`;
-  const { moviesMap: userMoviesMap, seriesMap: userSeriesMap } = useMemo(() => {
+  const { moviesIndex: userMoviesIndex, seriesIndex: userSeriesIndex, allIndex: userAllIndex } = useMemo(() => {
     const cached = homeLookupCache.get(homeLookupKey);
     if (cached) {
       return cached;
     }
 
-    const built = buildHomeLookupMaps(userMovies, userSeries);
+    const built = {
+      moviesIndex: buildSearchIndex(userMovies),
+      seriesIndex: buildSearchIndex(userSeries)
+    };
+
+    built.allIndex = [...built.moviesIndex, ...built.seriesIndex];
+
     homeLookupCache.set(homeLookupKey, built);
     return built;
   }, [homeLookupKey, userMovies, userSeries]);
@@ -132,7 +286,6 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
       const cached = homeTrendingCache.get(activePlaylistId);
       if (cached && (Date.now() - cached.timestamp) < HOME_TRENDING_CACHE_TTL) {
         setMatchedTrending(cached.items || []);
-        setFallbackTrending(cached.fallbackItems || []);
         setHeroTrending(cached.heroItems || []);
         setIsInitialLoading(false);
         return;
@@ -146,60 +299,33 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
           tmdbService.getTrending('week')
         ]);
 
-        const heroItems = (hero || []).filter((item) => item?.backdropUrl || item?.posterUrl);
-        setHeroTrending(heroItems);
+        const usedIds = new Set();
+        const heroItems = resolveHomeDisplayItems({
+          tmdbItems: (hero || []).slice(0, 5),
+          preferredType: 'movie',
+          moviesIndex: userMoviesIndex,
+          seriesIndex: userSeriesIndex,
+          allIndex: userAllIndex,
+          usedIds
+        });
 
-        const trending = week || [];
-        const fallbackItems = trending.slice(0, 20);
-        setFallbackTrending(fallbackItems);
-        
-        const matched = [];
-        
-        for (const trend of trending) {
-          if (isCancelled) return;
-
-          const trendImageId = extractTMDBIdFromUrl(trend.posterUrl);
-          const trendType = trend.type;
-          const title = (trend.title || trend.name || '').toLowerCase().trim();
-          const semAcento = normalizeLookupText(title);
-          
-          let userMatch = null;
-          
-          if (trendImageId) {
-            if (trendType === 'movie') {
-              userMatch = userMoviesMap.get(`movie_id_${trendImageId}`);
-            } else if (trendType === 'tv') {
-              userMatch = userSeriesMap.get(`series_id_${trendImageId}`);
-            }
-          }
-          
-          if (!userMatch) {
-            if (trendType === 'movie') {
-              userMatch = userMoviesMap.get(`movie_name_${title}`) || userMoviesMap.get(`movie_name_${semAcento}`);
-            } else if (trendType === 'tv') {
-              userMatch = userSeriesMap.get(`series_name_${title}`) || userSeriesMap.get(`series_name_${semAcento}`);
-            }
-          }
-          
-          if (userMatch) {
-            matched.push({
-              ...trend,
-              userItem: userMatch.item,
-              userType: userMatch.type,
-              logo: userMatch.item.tvg?.logo || userMatch.item.logo,
-              url: userMatch.item.url
-            });
-          }
-        }
+        const matched = resolveHomeDisplayItems({
+          tmdbItems: (week || []).slice(0, 20),
+          preferredType: 'movie',
+          moviesIndex: userMoviesIndex,
+          seriesIndex: userSeriesIndex,
+          allIndex: userAllIndex,
+          usedIds
+        });
 
         homeTrendingCache.set(activePlaylistId, {
           items: matched,
-          fallbackItems,
           heroItems,
           timestamp: Date.now()
         });
 
         if (!isCancelled) {
+          setHeroTrending(heroItems);
           setMatchedTrending(matched);
         }
         
@@ -220,7 +346,7 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
     return () => {
       isCancelled = true;
     };
-  }, [playlistLoading, hasPlaylist, activePlaylistId, userMoviesMap, userSeriesMap]);
+  }, [playlistLoading, hasPlaylist, activePlaylistId, userMoviesIndex, userSeriesIndex, userAllIndex]);
 
   
   const liveByGroup = useMemo(() => {
@@ -242,7 +368,7 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
     return heroTrending.slice(0, 5);
   }, [heroTrending]);
 
-  const trendingForDisplay = matchedTrending.length > 0 ? matchedTrending : fallbackTrending;
+  const trendingForDisplay = matchedTrending;
 
   const movieCategories = useMemo(() => {
     return Array.from(new Set(
@@ -291,24 +417,53 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
   const handleHomeCardSelect = (item, rowType) => {
     if (!item) return;
 
+    const prefetchedTMDBData = item.prefetchedTMDBData || item.tmdbData || null;
+
+    const openMovie = () => {
+      navigate('/movies', { state: { autoPlayItem: item, startInCinema: false, prefetchedTMDBData } });
+    };
+
+    const openSeries = () => {
+      navigate('/series', { state: { openSeries: item } });
+    };
+
+    const openLive = () => {
+      navigate('/live', { state: { autoPlayChannel: item } });
+    };
+
     if (rowType === 'movies') {
-      navigate('/movies', { state: { autoPlayItem: item } });
+      openMovie();
       return;
     }
 
     if (rowType === 'series') {
-      navigate('/series', { state: { openSeries: item } });
+      openSeries();
       return;
     }
 
     if (rowType === 'live') {
-      navigate('/live', { state: { autoPlayChannel: item } });
+      openLive();
       return;
     }
 
     if (rowType === 'tmdb') {
+      if (item.type === 'movie') {
+        openMovie();
+        return;
+      }
+
+      if (item.type === 'series') {
+        openSeries();
+        return;
+      }
+
+      if (item.type === 'live') {
+        openLive();
+        return;
+      }
+
       if (item.userItem && item.userType === 'movie') {
-        navigate('/movies', { state: { autoPlayItem: item.userItem } });
+        navigate('/movies', { state: { autoPlayItem: item.userItem, startInCinema: false, prefetchedTMDBData } });
         return;
       }
 
@@ -326,8 +481,23 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
   const handleHeroPlay = (heroItem) => {
     if (!heroItem) return;
 
+    if (heroItem.type === 'movie') {
+      navigate('/movies', { state: { autoPlayItem: heroItem, startInCinema: false, prefetchedTMDBData: heroItem.prefetchedTMDBData || null } });
+      return;
+    }
+
+    if (heroItem.type === 'series') {
+      navigate('/series', { state: { openSeries: heroItem } });
+      return;
+    }
+
+    if (heroItem.type === 'live') {
+      navigate('/live', { state: { autoPlayChannel: heroItem } });
+      return;
+    }
+
     if (heroItem.userItem && heroItem.userType === 'movie') {
-      navigate('/movies', { state: { autoPlayItem: heroItem.userItem, startInCinema: false, prefetchedTMDBData: heroItem } });
+      navigate('/movies', { state: { autoPlayItem: heroItem.userItem, startInCinema: false, prefetchedTMDBData: heroItem.prefetchedTMDBData || null } });
       return;
     }
 
@@ -338,29 +508,29 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
 
     if (heroItem.userItem && heroItem.userType === 'live') {
       navigate('/live', { state: { autoPlayChannel: heroItem.userItem } });
-      return;
-    }
-
-    if (heroItem.type === 'movie') {
-      navigate('/movies', { state: { autoPlayItem: heroItem, startInCinema: false, prefetchedTMDBData: heroItem } });
-      return;
-    }
-
-    if (heroItem.type === 'tv') {
-      navigate('/series', { state: { openSeries: heroItem } });
     }
   };
 
   const handleHeroMoreInfo = (heroItem) => {
     if (!heroItem) return;
 
-    if (heroItem.userItem && heroItem.userType === 'movie') {
-      navigate('/movies', { state: { autoPlayItem: heroItem.userItem, startInCinema: true, prefetchedTMDBData: heroItem } });
+    if (heroItem.type === 'movie') {
+      navigate('/movies', { state: { autoPlayItem: heroItem, startInCinema: true, prefetchedTMDBData: heroItem.prefetchedTMDBData || null } });
       return;
     }
 
-    if (heroItem.type === 'movie') {
-      navigate('/movies', { state: { autoPlayItem: heroItem, startInCinema: true, prefetchedTMDBData: heroItem } });
+    if (heroItem.type === 'series') {
+      navigate('/series', { state: { openSeries: heroItem } });
+      return;
+    }
+
+    if (heroItem.type === 'live') {
+      navigate('/live', { state: { autoPlayChannel: heroItem } });
+      return;
+    }
+
+    if (heroItem.userItem && heroItem.userType === 'movie') {
+      navigate('/movies', { state: { autoPlayItem: heroItem.userItem, startInCinema: true, prefetchedTMDBData: heroItem.prefetchedTMDBData || null } });
       return;
     }
 
@@ -369,8 +539,8 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
       return;
     }
 
-    if (heroItem.type === 'tv') {
-      navigate('/series', { state: { openSeries: heroItem } });
+    if (heroItem.userItem && heroItem.userType === 'live') {
+      navigate('/live', { state: { autoPlayChannel: heroItem.userItem } });
     }
   };
 

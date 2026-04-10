@@ -17,7 +17,6 @@ import {
 } from '/src/shared/icons/heroiconsOutlineCompat';
 import { usePlaylist } from '../../shared/hooks/usePlaylist';
 import { StorageService } from '../../core/services/storage/StorageService';
-import WelcomeScreen from '../home/components/WelcomeScreen';
 import ActionModal from '../../shared/components/Modal/ActionModal';
 
 const storageService = new StorageService();
@@ -169,6 +168,12 @@ const SettingsScreen = () => {
     loadSettings();
   }, []);
 
+  useEffect(() => {
+    if (!hasPlaylist) {
+      navigate('/', { replace: true });
+    }
+  }, [hasPlaylist, navigate]);
+
   const loadSettings = async () => {
     const saved = await storageService.getSettings();
     const nextSettings = { ...saved, theme: 'dark' };
@@ -232,7 +237,7 @@ const SettingsScreen = () => {
 
   
   if (!hasPlaylist) {
-    return <WelcomeScreen />;
+    return null;
   }
 
   return (
@@ -251,7 +256,7 @@ const SettingsScreen = () => {
         <div className="mb-8">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/', { replace: true })}
               className="text-zinc-400 hover:text-white transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -259,6 +264,18 @@ const SettingsScreen = () => {
               </svg>
             </button>
             <h1 className="text-3xl font-bold text-white">Configurações</h1>
+          </div>
+          <div className="mt-3 ml-10">
+            <button
+              type="button"
+              onClick={() => navigate('/about')}
+              className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-red-500 transition-colors"
+            >
+              <span>Sobre a ZixTV</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           </div>
         </div>
 

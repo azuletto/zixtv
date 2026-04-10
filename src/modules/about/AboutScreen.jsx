@@ -182,13 +182,13 @@ const AboutScreen = () => {
                       <br /><br />
                       {section.content.split('\n\n')[1]}{' '}
                       <a 
-                        href="https://github.com/azuletto/zix-tv" 
+                        href="https://github.com/azuletto/zixtv" 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-red-500 hover:text-red-400 underline inline-flex items-center gap-1"
                       >
                         <Github className="w-4 h-4" />
-                        github.com/azuletto/zix-tv
+                        github.com/azuletto/zixtv
                       </a>
                     </>
                   ) : section.title === 'Licença' ? (

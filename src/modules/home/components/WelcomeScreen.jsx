@@ -181,7 +181,7 @@ const WelcomeScreen = () => {
                 onClick={() => navigate('/about')}
                 className="text-zinc-500 hover:text-red-500 text-sm font-medium transition-colors duration-100 inline-flex items-center gap-2 group"
               >
-                <span>Como obter uma playlist?</span>
+                <span>Dúvidas? Veja como obter uma playlist</span>
                 <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
