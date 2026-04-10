@@ -130,7 +130,7 @@ const HeroBanner = ({ items = [], onPlay, onMoreInfo }) => {
             <span className="text-xs sm:text-sm text-zinc-300">{currentItem.year}</span>
           )}
           <span className="text-xs sm:text-sm text-zinc-300 capitalize">
-            {currentItem.type === 'movie' ? 'Filme' : currentItem.type === 'tv' ? 'Série' : 'Destaque'}
+            {currentItem.type === 'movie' ? 'Filme' : (currentItem.type === 'tv' || currentItem.type === 'series') ? 'Série' : 'Destaque'}
           </span>
         </div>
 

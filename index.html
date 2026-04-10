@@ -1,15 +1,10 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-
-  <!-- 🔹 Responsividade -->
-
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- 🔹 SEO básico -->
-
   <title>ZixTV - Player IPTV Completo, Rápido e Organizado</title>
   <meta name="description" content="ZixTV é um player IPTV moderno e completo. Assista canais, organize playlists M3U, gerencie conteúdos e tenha uma experiência rápida, fluida e personalizada." />
   <meta name="keywords" content="IPTV, player IPTV, M3U, streaming, TV online, canais ao vivo, ZixTV" />
@@ -17,43 +12,40 @@
   <meta name="robots" content="index, follow" />
 
   <!-- 🔹 Tema mobile -->
-
   <meta name="theme-color" content="#0f172a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
   <!-- 🔹 Ícones -->
-
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="apple-touch-icon" href="/favicon.png" />
 
-  <!-- 🔹 Open Graph (Facebook, Discord, etc) -->
-
+  <!-- 🔹 Open Graph (Facebook, WhatsApp, LinkedIn, Discord) -->
   <meta property="og:title" content="ZixTV - Player IPTV Moderno" />
   <meta property="og:description" content="Assista canais IPTV, organize playlists e aproveite um player rápido e elegante." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="http://zixtv.org" />
   <meta property="og:image" content="http://zixtv.org/favicon.png" />
+  <meta property="og:image:width" content="512" />
+  <meta property="og:image:height" content="512" />
   <meta property="og:locale" content="pt_BR" />
 
   <!-- 🔹 Twitter Card -->
-
-  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:card" content="summary" />
   <meta name="twitter:title" content="ZixTV - Player IPTV" />
   <meta name="twitter:description" content="Player IPTV moderno com suporte a M3U e streaming rápido." />
   <meta name="twitter:image" content="http://zixtv.org/favicon.png" />
 
-  <!-- 🔹 Performance -->
+  <!-- 🔹 WhatsApp específico (usa og: mas com dimensões corretas) -->
+  <meta property="og:image:type" content="image/png" />
 
+  <!-- 🔹 Performance -->
   <link rel="preconnect" href="https://api.themoviedb.org" />
   <link rel="dns-prefetch" href="https://api.themoviedb.org" />
 
 </head>
-
 <body>
   <div id="root"></div>
-
   <script type="module" src="./src/index.jsx"></script>
-
 </body>
 </html>

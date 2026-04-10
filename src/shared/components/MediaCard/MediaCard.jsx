@@ -60,7 +60,11 @@ const MediaCard = ({ item, type, imageFit = 'cover', imageScale = 0.94, imagePad
       return 'Série';
     }
     if (type === 'tmdb') {
-      const itemType = normalizedItem.type === 'movie' ? 'Filme' : normalizedItem.type === 'tv' ? 'Série' : '';
+      const itemType = normalizedItem.type === 'movie'
+        ? 'Filme'
+        : (normalizedItem.type === 'tv' || normalizedItem.type === 'series')
+          ? 'Série'
+          : '';
       return itemType;
     }
     return '';

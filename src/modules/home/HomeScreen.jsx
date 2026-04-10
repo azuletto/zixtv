@@ -44,14 +44,18 @@ const HOME_TITLE_STOP_WORDS = new Set([
 
 const escapeRegExp = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+const stripBracketSegments = (value) => String(value || '').replace(/\[[^\]]*\]/g, ' ');
+
 const normalizeLookupText = (value) => {
   if (!value) return '';
   return value
-    .toLowerCase()
+    .replace(/\s+/g, ' ')
     .trim()
+    .replace(/\[[^\]]*\]/g, ' ')
+    .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\w\s]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 };
@@ -66,7 +70,12 @@ const buildFlexibleTitleRegex = (value) => {
 
   if (!tokens.length) return null;
 
-  return new RegExp(tokens.map(escapeRegExp).join('[\\s\\W_]*'), 'i');
+  if (tokens.length === 1) {
+    return new RegExp(`\\b${escapeRegExp(tokens[0])}\\b`, 'i');
+  }
+
+  const lookaheads = tokens.map((token) => `(?=.*\\b${escapeRegExp(token)}\\b)`).join('');
+  return new RegExp(`^${lookaheads}.*$`, 'i');
 };
 
 const extractSearchAliases = (item = {}) => {
@@ -81,6 +90,7 @@ const extractSearchAliases = (item = {}) => {
     item.metadata?.seriesName,
     item.tvg?.name
   ]
+    .map(stripBracketSegments)
     .map(normalizeLookupText)
     .filter(Boolean);
 
@@ -133,6 +143,10 @@ const scoreIndexMatch = (tmdbItem, indexedItem) => {
 
   if (tmdbRegexes.some((regex) => indexedItem.aliases.some((alias) => regex.test(alias)))) {
     return 90;
+  }
+
+  if (indexedItem.regexes.some((regex) => tmdbAliases.some((alias) => regex.test(alias)))) {
+    return 88;
   }
 
   let overlapScore = 0;
