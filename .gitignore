@@ -35,3 +35,5 @@ Thumbs.db
 
 # --- Scripts de Utilidade 
 scan.py
+deploy.bat
+key-zixtv-server.pem
