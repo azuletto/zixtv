@@ -22,7 +22,7 @@
   
   **ZixTV** is not just another M3U playlist player. It’s a complete organizer that uses the **TMDB API** to enrich your library with posters, synopses, and metadata-transforming a simple list into a more cinematic experience.
 
-> The project was designed to be "Edge-First," running natively on Vercel with high performance. However, you may experience delays depending on your playlist or its format.
+> The project was designed to be "Edge-First," running natively on an AWS EC2 instance for high performance. However, you may experience delays depending on your playlist or its format.
 
 ## Goals & Donate
 
@@ -46,28 +46,25 @@
 | **🔒 General** | Playlist Custumization (Like, Add, Etc..) | ❌ Not Done |
 | **📜 General** | History | ❌ Not Done |
 
+<br />
+
 ## ❤️ Support the Project
 
 **ZixTV** is a non-profit, open-source initiative. Your support helps us cover metadata API costs, maintain demo servers, and keep the project ad-free for everyone. 
 
-<br />
-
-<div align="center">
+<div align="left">
   <table border="0">
     <tr>
       <td width="320" align="center" valign="top" style="border: 1px solid #333; border-radius: 10px; padding: 20px;">
-        <img src="https://img.shields.io/badge/PIX-Direct_Transfer-00ff88?style=for-the-badge&logo=pix&logoColor=white" width="180" height="40" />
-        <br /> <br />
         <p><i>Direct support for Brazilian contributors. Fast, secure, and fee-free.</i></p>
+        <img src="https://img.shields.io/badge/PIX-Direct_Transfer-00ff88?style=for-the-badge&logo=pix&logoColor=white" width="180" height="40" />
         <a href="mailto:oliveira.andre.dev@gmail.com">
-          <strong>Key: oliveira.andre.dev@gmail.com</strong>
+          <strong>oliveira.andre.dev@gmail.com</strong>
         </a>
       </td>
     </tr>
   </table>
 </div>
-
-<br />
 
 ### 🥇 Hall of Fame
 *Be the first to support ZixTV and get your name or company logo featured right here!*
@@ -75,8 +72,3 @@
 > "Open source thrives when the community invests in the tools they use every day."
 
 <hr>
-<p align="center">
-   <i>That pale blue dot, the only house we will never know.</i>
-   <br>
-<br>
----
