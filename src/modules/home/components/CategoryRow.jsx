@@ -4,7 +4,7 @@ import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from '/src/shared/
 import { useNavigate } from 'react-router-dom';
 import MediaCard from '../../../shared/components/MediaCard/MediaCard';
 
-const CategoryRow = ({ title, items = [], type, categories = [], viewAllPath, onItemSelect }) => {
+const CategoryRow = ({ title, items = [], type, categories = [], viewAllPath, onItemSelect, showViewAll = true }) => {
   const navigate = useNavigate();
   const rowRef = useRef(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -155,12 +155,14 @@ const CategoryRow = ({ title, items = [], type, categories = [], viewAllPath, on
       <div className="flex items-center justify-between mb-4 px-6">
         <h2 className="text-lg sm:text-xl font-semibold text-white">{title}</h2>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate(resolvedViewAllPath)}
-            className="text-xs font-medium text-zinc-300 hover:text-white transition-colors bg-zinc-800/40 hover:bg-zinc-700/60 px-3 py-1 rounded"
-          >
-            Ver tudo
-          </button>
+          {showViewAll && (
+            <button
+              onClick={() => navigate(resolvedViewAllPath)}
+              className="text-xs font-medium text-zinc-300 hover:text-white transition-colors bg-zinc-800/40 hover:bg-zinc-700/60 px-3 py-1 rounded"
+            >
+              Ver tudo
+            </button>
+          )}
 
           {totalItems > 12 && (
             <span className="text-xs text-zinc-500">

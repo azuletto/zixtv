@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Upload, Link, Server, Eye, EyeOff, Shield, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePlaylist } from '../../hooks/usePlaylist';
 import ModernLoader from '../Loaders/ModernLoader';
 
-const ProcessingModal = () => (
+const ProcessingModal = ({ status, progress, onCancel, isCancelling }) => (
   <motion.div
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
@@ -24,11 +24,40 @@ const ProcessingModal = () => (
       <ModernLoader
         variant="compact"
         title="Processando playlist"
-        subtitle="Validando e organizando os itens"
-        steps={['Lendo arquivo', 'Organizando conteúdo', 'Salvando dados']}
-        activeStep={1}
+        subtitle={status?.message || 'Validando e organizando os itens'}
+        steps={['Conectando', 'Baixando', 'Organizando', 'Salvando']}
+        activeStep={Math.min(status?.stepIndex ?? 0, 3)}
         showSteps={false}
       />
+
+      <div className="mt-4 space-y-3">
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-3 text-[11px] text-zinc-400">
+            <span>{status?.label || 'Aguardando resposta do servidor'}</span>
+            <span>{progress?.text || '0 B'}</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-red-500 transition-all duration-200"
+              style={{ width: `${progress?.percentage ?? 0}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[11px] text-zinc-500 leading-relaxed">
+            {progress?.detail || 'A conexão continua pendente até o download terminar.'}
+          </p>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isCancelling}
+            className="shrink-0 px-3 py-1.5 rounded-lg border border-zinc-700 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isCancelling ? 'Cancelando...' : 'Cancelar'}
+          </button>
+        </div>
+      </div>
     </motion.div>
   </motion.div>
 );
@@ -100,10 +129,105 @@ const AddPlaylistModal = ({ isOpen, onClose, initialType = null }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState({ phase: 'idle', message: '', label: '', stepIndex: 0 });
+  const [downloadProgress, setDownloadProgress] = useState({ receivedBytes: 0, totalBytes: null, percentage: 0, text: '', detail: '' });
+  const [isCancelling, setIsCancelling] = useState(false);
   const [showPrivacyTerms, setShowPrivacyTerms] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const abortControllerRef = useRef(null);
+  const lastProgressUpdateRef = useRef({ time: 0, percentage: -1, phase: '', detail: '' });
   
   const { addPlaylist, isLoading } = usePlaylist();
+
+  const formatBytes = (bytes = 0) => {
+    const value = Number(bytes) || 0;
+    if (value < 1024) return `${value} B`;
+    const kilobytes = value / 1024;
+    if (kilobytes < 1024) return `${kilobytes.toFixed(1)} KB`;
+    return `${(kilobytes / 1024).toFixed(1)} MB`;
+  };
+
+  const updateProcessingStatus = (payload = {}) => {
+    const phase = payload.phase || 'downloading';
+    const now = Date.now();
+    const stepMap = {
+      starting: 0,
+      connecting: 0,
+      downloading: 1,
+      downloaded: 1,
+      validating: 2,
+      organizing: 2,
+      enriching: 2,
+      categorizing: 2,
+      saving: 3,
+      done: 3
+    };
+
+    const nextPercentage = typeof payload.receivedBytes === 'number'
+      ? (Number.isFinite(payload.percentage) ? payload.percentage : null)
+      : (Number.isFinite(payload.percentage) ? Math.max(0, Math.min(100, payload.percentage)) : null);
+    const nextDetail = payload.message || '';
+    const shouldSkipStatus =
+      lastProgressUpdateRef.current.phase === phase &&
+      nextPercentage !== null &&
+      lastProgressUpdateRef.current.percentage === nextPercentage &&
+      nextDetail === lastProgressUpdateRef.current.detail &&
+      (now - lastProgressUpdateRef.current.time) < 180;
+
+    if (shouldSkipStatus) {
+      return;
+    }
+
+    lastProgressUpdateRef.current = {
+      time: now,
+      percentage: nextPercentage ?? lastProgressUpdateRef.current.percentage,
+      phase,
+      detail: nextDetail || lastProgressUpdateRef.current.detail
+    };
+
+    setProcessingStatus({
+      phase,
+      message: payload.message || '',
+      label: phase === 'downloading' && !payload.message ? 'Recebendo dados da playlist' : payload.message || 'Aguardando resposta do servidor',
+      stepIndex: stepMap[phase] ?? 0
+    });
+
+    if (typeof payload.receivedBytes === 'number') {
+      const totalBytes = Number.isFinite(payload.totalBytes) ? payload.totalBytes : null;
+      const percentage = Number.isFinite(payload.percentage) ? payload.percentage : (totalBytes ? Math.min(99, Math.round((payload.receivedBytes / totalBytes) * 100)) : 0);
+      setDownloadProgress({
+        receivedBytes: payload.receivedBytes,
+        totalBytes,
+        percentage,
+        text: totalBytes ? `${formatBytes(payload.receivedBytes)} / ${formatBytes(totalBytes)}` : formatBytes(payload.receivedBytes),
+        detail: payload.message || (totalBytes ? 'O proxy continua recebendo o arquivo até terminar.' : 'O proxy está recebendo dados da playlist.')
+      });
+    } else if (Number.isFinite(payload.percentage)) {
+      setDownloadProgress((current) => ({
+        ...current,
+        percentage: Math.max(0, Math.min(100, payload.percentage)),
+        text: `${Math.max(0, Math.min(100, payload.percentage))}%`,
+        detail: payload.message || current.detail
+      }));
+    } else if (payload.message) {
+      setDownloadProgress((current) => ({
+        ...current,
+        detail: payload.message
+      }));
+    }
+  };
+
+  const handleCancelDownload = () => {
+    if (abortControllerRef.current) {
+      setIsCancelling(true);
+      abortControllerRef.current.abort();
+    }
+    setError('');
+    setDownloadProgress({ receivedBytes: 0, totalBytes: null, percentage: 0, text: '', detail: 'Download cancelado pelo usuário.' });
+    setProcessingStatus({ phase: 'cancelled', message: 'Download cancelado', label: 'Download cancelado', stepIndex: 0 });
+    setIsProcessing(false);
+    setIsCancelling(false);
+  };
 
   
   useEffect(() => {
@@ -133,6 +257,10 @@ const AddPlaylistModal = ({ isOpen, onClose, initialType = null }) => {
       });
       setError('');
       setIsProcessing(false);
+      setIsCancelling(false);
+      setProcessingStatus({ phase: 'idle', message: '', label: '', stepIndex: 0 });
+      setDownloadProgress({ receivedBytes: 0, totalBytes: null, percentage: 0, text: '', detail: '' });
+      abortControllerRef.current = null;
     }
   }, [isOpen, initialType]);
 
@@ -156,6 +284,11 @@ const AddPlaylistModal = ({ isOpen, onClose, initialType = null }) => {
 
     setError('');
     setIsProcessing(true);
+    setIsCancelling(false);
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    updateProcessingStatus({ phase: 'connecting', message: 'Conectando ao proxy da playlist' });
+    setDownloadProgress({ receivedBytes: 0, totalBytes: null, percentage: 0, text: '', detail: 'Aguardando a primeira resposta do servidor.' });
 
     try {
       let playlistData = {
@@ -209,12 +342,24 @@ const AddPlaylistModal = ({ isOpen, onClose, initialType = null }) => {
           break;
       }
 
-      await addPlaylist(playlistData);
+      await addPlaylist(playlistData, {
+        signal: controller.signal,
+        onStatus: updateProcessingStatus,
+        onProgress: updateProcessingStatus
+      });
       onClose();
       
     } catch (err) {
+      if (controller.signal.aborted) {
+        setError('');
+        setIsProcessing(false);
+        setIsCancelling(false);
+        return;
+      }
+
       setError(err.message || 'Erro ao adicionar playlist. Tente novamente.');
       setIsProcessing(false);
+      setIsCancelling(false);
     }
   };
 
@@ -567,7 +712,14 @@ const AddPlaylistModal = ({ isOpen, onClose, initialType = null }) => {
           </motion.div>
         )}
 
-        {isOpen && isProcessing && <ProcessingModal />}
+        {isOpen && isProcessing && (
+          <ProcessingModal
+            status={processingStatus}
+            progress={downloadProgress}
+            onCancel={handleCancelDownload}
+            isCancelling={isCancelling}
+          />
+        )}
       </AnimatePresence>
 
       <PrivacyTermsModal 

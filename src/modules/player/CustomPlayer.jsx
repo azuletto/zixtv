@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { XIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 import { usePlayerStore } from '../../app/store/playerStore';
 import { StorageService } from '../../core/services/storage/StorageService';
+import { resolveMediaUrl } from '../../core/services/network/proxy';
 import PlayerControls from './PlayerControls';
 import CinemaMode from './CinemaMode';
 import MiniPlayer from './MiniPlayer';
@@ -272,6 +273,8 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !source) return;
+    const sourceLower = String(source).toLowerCase();
+    const resolvedSource = resolveMediaUrl(source);
     const bufferConfig = getBufferProfileConfig();
 
     setIsLoading(true);
@@ -294,7 +297,6 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
       mpegtsRef.current = null;
     }
 
-    const sourceLower = source.toLowerCase();
     const isHlsSource = sourceLower.includes('.m3u8');
     const isLikelyTsLive = isLiveContent && (
       /\.ts(\?|$)/i.test(source) ||
@@ -304,6 +306,23 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
 
     video.preload = 'auto';
     video.playsInline = true;
+    video.crossOrigin = 'anonymous';
+    video.controlsList = 'nodownload';
+
+    const isDirectFile = !isHlsSource && !isLiveContent && (
+      source.endsWith('.mp4') ||
+      source.endsWith('.mkv') ||
+      source.endsWith('.avi') ||
+      source.endsWith('.mov') ||
+      source.endsWith('.webm')
+    );
+
+    if (isDirectFile) {
+      video.src = resolvedSource;
+      setIsReady(true);
+      setIsLoading(false);
+      return () => {};
+    }
 
     if (isLikelyTsLive && mpegts.getFeatureList().mseLivePlayback) {
       try {
@@ -311,11 +330,11 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
           {
             type: 'mpegts',
             isLive: true,
-            url: source,
+            url: resolvedSource,
           },
           {
-            enableWorker: true,
-            lazyLoad: true, 
+            enableWorker: false,
+            lazyLoad: false,
             enableStashBuffer: true,
             stashInitialSize: bufferConfig.tsStashInitialSize,
             autoCleanupSourceBuffer: true,
@@ -377,7 +396,7 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
       
       const hls = new Hls(hlsConfig);
       
-      hls.loadSource(source);
+      hls.loadSource(resolvedSource);
       hls.attachMedia(video);
       
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -432,12 +451,6 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
       });
       
       hlsRef.current = hls;
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = source;
-      video.load();
-    } else {
-      video.src = source;
-      video.load();
     }
 
     return () => {

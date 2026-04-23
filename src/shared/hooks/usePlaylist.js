@@ -159,7 +159,8 @@ export const usePlaylist = () => {
     data: playlists = [], 
     isLoading, 
     error,
-    isFetching
+    isFetching,
+    isFetched
   } = useQuery({
     queryKey: ['playlists'],
     queryFn: async () => {
@@ -353,18 +354,25 @@ export const usePlaylist = () => {
 
   
   const addPlaylistMutation = useMutation({
-    mutationFn: (playlistData) => {
-      return playlistService.addPlaylist(playlistData);
+    mutationFn: ({ playlistData, requestOptions = {} }) => {
+      return playlistService.addPlaylist(playlistData, requestOptions);
     },
     onSuccess: (newPlaylist) => {
-      
-      categoryCache.clear();
-      processingQueue.clear();
-      
-      if (playlists.length === 0) {
-        store.setActivePlaylist(newPlaylist);
-      }
-      queryClient.invalidateQueries({ queryKey: ['playlists'] });
+      const currentPlaylists = Array.isArray(store.playlists) ? store.playlists : [];
+      const alreadyExists = currentPlaylists.some((playlist) => playlist.id === newPlaylist.id);
+      const nextPlaylists = alreadyExists
+        ? currentPlaylists.map((playlist) => (playlist.id === newPlaylist.id ? newPlaylist : playlist))
+        : [...currentPlaylists, newPlaylist];
+
+      store.setPlaylists(nextPlaylists);
+      store.setActivePlaylist(newPlaylist);
+
+      queryClient.setQueryData(['playlists'], nextPlaylists);
+
+      // Keep the initial transition responsive; avoid immediate full refetch/reprocess.
+      setTimeout(() => {
+        preloadPlaylistData(newPlaylist.id);
+      }, 300);
     },
   });
 
@@ -399,9 +407,9 @@ export const usePlaylist = () => {
     },
   });
 
-  const addPlaylist = async (playlistData) => {
+  const addPlaylist = async (playlistData, requestOptions = {}) => {
     try {
-      const result = await addPlaylistMutation.mutateAsync(playlistData);
+      const result = await addPlaylistMutation.mutateAsync({ playlistData, requestOptions });
       return result;
     } catch (error) {
       throw error;
@@ -434,6 +442,7 @@ export const usePlaylist = () => {
     playlists,
     activePlaylist: store.activePlaylist,
     isLoading,
+    isHydrated: isFetched,
     isFetching,
     error,
     addPlaylist,

@@ -1,6 +1,7 @@
 
 
 import { HLSPlayer } from './HLSPlayer';
+import { resolveMediaUrl } from '../network/proxy';
 
 export class PlayerService {
   constructor(videoElement) {
@@ -56,12 +57,13 @@ export class PlayerService {
   }
 
   async loadSource(source, type = 'auto') {
-    this.currentSource = source;
+    const resolvedSource = resolveMediaUrl(source);
+    this.currentSource = resolvedSource;
 
-    if (type === 'hls' || source.endsWith('.m3u8')) {
-      return this.loadHLS(source);
+    if (type === 'hls' || resolvedSource.endsWith('.m3u8')) {
+      return this.loadHLS(resolvedSource);
     } else {
-      return this.loadDirect(source);
+      return this.loadDirect(resolvedSource);
     }
   }
 

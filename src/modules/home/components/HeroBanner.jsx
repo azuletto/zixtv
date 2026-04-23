@@ -56,6 +56,7 @@ const HeroBanner = ({ items = [], onPlay, onMoreInfo }) => {
   const currentItem = hasItems ? safeItems[currentIndex % safeItems.length] : null;
   const currentImage = getItemImage(currentItem || {});
   const voteAverage = Number(currentItem?.voteAverage);
+  const displayTitle = currentItem?.displayTitle || currentItem?.title || currentItem?.name || '';
 
   useEffect(() => {
     setImageLoaded(false);
@@ -93,7 +94,7 @@ const HeroBanner = ({ items = [], onPlay, onMoreInfo }) => {
         {currentImage && !hasImageError && (
           <img
             src={currentImage}
-            alt={currentItem.title || currentItem.name}
+            alt={displayTitle}
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 z-10 ${
               imageLoaded ? 'opacity-100' : 'opacity-0'
             }`}
@@ -117,7 +118,7 @@ const HeroBanner = ({ items = [], onPlay, onMoreInfo }) => {
       {}
       <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-8 md:p-12 lg:p-16 max-w-3xl transition-opacity duration-500 z-40 opacity-100">
         <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-2 sm:mb-3 md:mb-4 line-clamp-2">
-          {currentItem.title || currentItem.name}
+          {displayTitle}
         </h1>
         
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4 text-white mb-2 sm:mb-3 md:mb-4">

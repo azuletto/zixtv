@@ -15,55 +15,36 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { timeWindow = 'week', page = 1, limit = 50 } = req.query;
-    
-    
-    const windows = timeWindow === 'all' ? ['day', 'week'] : [timeWindow];
-    const pages = [1, 2, 3]; 
+    const safeWindow = String(req.query.timeWindow || 'week').toLowerCase() === 'day' ? 'day' : 'week';
+    const safePage = Math.max(1, parseInt(req.query.page || '1', 10) || 1);
+    const safeLimit = Math.min(100, Math.max(1, parseInt(req.query.limit || '50', 10) || 50));
 
-    const requests = [];
-    
-    for (const window of windows) {
-      for (const p of pages) {
-        requests.push({ type: 'movie', promise: fetchTMDB(`/trending/movie/${window}`, { page: p }) });
-        requests.push({ type: 'tv', promise: fetchTMDB(`/trending/tv/${window}`, { page: p }) });
-      }
-    }
-    
-    const results = await Promise.all(requests.map((reqItem) => reqItem.promise));
-    
-    
-    let allItems = [];
-    
-    results.forEach((data, index) => {
-      if (data.results) {
-        const type = requests[index]?.type || data.results[0]?.media_type || 'movie';
-        const formatted = data.results.map(item => formatMediaItem(item, item.media_type || type));
-        allItems.push(...formatted);
+    const [movieData, tvData] = await Promise.all([
+      fetchTMDB(`/trending/movie/${safeWindow}`, { page: safePage }),
+      fetchTMDB(`/trending/tv/${safeWindow}`, { page: safePage })
+    ]);
+
+    const movieItems = (movieData.results || []).map((item) => formatMediaItem(item, 'movie'));
+    const tvItems = (tvData.results || []).map((item) => formatMediaItem(item, 'tv'));
+
+    const uniqueMap = new Map();
+    [...movieItems, ...tvItems].forEach((item) => {
+      if (!item) return;
+      const type = String(item.type || '').toLowerCase() === 'tv' ? 'tv' : 'movie';
+      const key = `${type}:${item.id}`;
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, item);
       }
     });
-    
-    
-    const uniqueMap = new Map();
-    for (const item of allItems) {
-      if (!uniqueMap.has(item.id)) {
-        uniqueMap.set(item.id, item);
-      }
-    }
-    
-    const uniqueItems = Array.from(uniqueMap.values());
-    
-    
-    const sorted = uniqueItems
-      .sort((a, b) => b.popularity - a.popularity)
-      .slice(0, parseInt(limit));
+
+    const sorted = Array.from(uniqueMap.values())
+      .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
+      .slice(0, safeLimit);
     
     res.status(200).json({
       success: true,
       data: sorted,
-      total: sorted.length,
-      fetched: allItems.length,
-      unique: uniqueItems.length
+      total: sorted.length
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch trending content', message: error.message });

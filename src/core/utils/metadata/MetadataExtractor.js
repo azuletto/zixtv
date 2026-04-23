@@ -16,42 +16,47 @@ export class MetadataExtractor {
       popularity: 0,
       voteCount: 0
     };
-  }''
+  }
 
-  async extract(item, options = {}) {
+  extractLive(item = {}) {
     const metadata = { ...this.defaultMetadata };
 
     try {
-      
-      const titleMetadata = this.extractFromTitle(item.name || item.title);
-      
-      
-      const categoryMetadata = this.extractFromCategory(item.group);
-      
-      
-      const tagMetadata = this.extractFromTags(item.tags || []);
-      
-      
-      Object.assign(metadata, titleMetadata, categoryMetadata, tagMetadata);
+      const categoryMetadata = this.extractFromCategory(item.group || item.groupTitle || item.originalGroup);
+      Object.assign(metadata, categoryMetadata);
 
-      
       if (item.tvg) {
         Object.assign(metadata, this.extractFromTVG(item.tvg));
       }
 
-      
-      
-      
-      
-      
-      
-      
-
-      
       return this.normalizeMetadata(metadata);
     } catch (error) {
       return this.normalizeMetadata(metadata);
     }
+  }
+
+  extractSync(item = {}) {
+    const metadata = { ...this.defaultMetadata };
+
+    try {
+      const titleMetadata = this.extractFromTitle(item.name || item.title);
+      const categoryMetadata = this.extractFromCategory(item.group || item.groupTitle || item.originalGroup);
+      const tagMetadata = this.extractFromTags(item.tags || []);
+
+      Object.assign(metadata, titleMetadata, categoryMetadata, tagMetadata);
+
+      if (item.tvg) {
+        Object.assign(metadata, this.extractFromTVG(item.tvg));
+      }
+
+      return this.normalizeMetadata(metadata);
+    } catch (error) {
+      return this.normalizeMetadata(metadata);
+    }
+  }
+
+  async extract(item, options = {}) {
+    return this.extractSync(item);
   }
 
   extractFromTitle(title) {

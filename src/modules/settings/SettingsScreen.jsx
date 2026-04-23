@@ -149,7 +149,7 @@ const SettingsDropdown = ({ options, value, onChange, disabled = false }) => {
 
 const SettingsScreen = () => {
   const navigate = useNavigate();
-  const { playlists, deletePlaylist } = usePlaylist();
+  const { playlists, deletePlaylist, isHydrated: playlistHydrated } = usePlaylist();
   const [settings, setSettings] = useState({
     theme: 'dark',
     defaultQuality: 'auto',
@@ -169,10 +169,12 @@ const SettingsScreen = () => {
   }, []);
 
   useEffect(() => {
+    if (!playlistHydrated) return;
+
     if (!hasPlaylist) {
       navigate('/', { replace: true });
     }
-  }, [hasPlaylist, navigate]);
+  }, [hasPlaylist, navigate, playlistHydrated]);
 
   const loadSettings = async () => {
     const saved = await storageService.getSettings();
@@ -236,7 +238,7 @@ const SettingsScreen = () => {
   };
 
   
-  if (!hasPlaylist) {
+  if (!playlistHydrated || !hasPlaylist) {
     return null;
   }
 

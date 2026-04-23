@@ -14,8 +14,12 @@ export class MediaAnalyzer {
     let baseType = 'unknown';
     if (url.endsWith('.ts')) {
       baseType = 'live';
-    } else if (url.endsWith('.mp4') || url.endsWith('.mkv') || url.endsWith('.avi') || url.endsWith('.m3u8')) {
+    } else if (url.endsWith('.mp4') || url.endsWith('.mkv') || url.endsWith('.avi')) {
       baseType = 'vod';
+    } else if (url.endsWith('.m3u8')) {
+      const vodSignals = ['filme', 'filmes', 'movie', 'cinema', 'vod', 'on demand'];
+      const text = `${name} ${groupTitle}`.toLowerCase();
+      baseType = vodSignals.some((signal) => text.includes(signal)) ? 'vod' : 'live';
     }
     
     

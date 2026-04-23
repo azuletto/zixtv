@@ -7,6 +7,12 @@ export class TMDBService {
     this.apiKey = import.meta.env.VITE_TMDB_API_KEY || import.meta.env.TMDB_API_KEY || '';
   }
 
+  extractImageId(path) {
+    if (!path || typeof path !== 'string') return null;
+    const match = path.match(/\/([^/]+)\.(?:jpg|jpeg|png|webp)(?:\?.*)?$/i);
+    return match ? match[1] : null;
+  }
+
   getImageUrl(path, size = 'medium', type = 'poster') {
     if (!path) return null;
 
@@ -32,13 +38,19 @@ export class TMDBService {
   formatMediaItem(item, type) {
     if (!item) return null;
 
+    const posterId = this.extractImageId(item.poster_path);
+    const backdropId = this.extractImageId(item.backdrop_path);
+
     return {
       id: item.id,
       title: item.title || item.name,
+      displayTitle: item.title || item.name,
       name: item.name || item.title,
       overview: item.overview,
       posterPath: item.poster_path,
       backdropPath: item.backdrop_path,
+      posterId,
+      backdropId,
       releaseDate: item.release_date || item.first_air_date,
       voteAverage: item.vote_average,
       voteCount: item.vote_count,

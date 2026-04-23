@@ -170,20 +170,6 @@ export class PlaylistValidator {
     }
 
     
-    const urls = new Set();
-    const duplicates = items.filter(item => {
-      if (urls.has(item.url)) {
-        return true;
-      }
-      urls.add(item.url);
-      return false;
-    });
-
-    if (duplicates.length > 0) {
-      this.warnings.push(`${duplicates.length} URLs duplicadas encontradas`);
-    }
-
-    
     const types = {
       live: items.filter(i => i.type === 'live').length,
       movie: items.filter(i => i.type === 'vod').length,

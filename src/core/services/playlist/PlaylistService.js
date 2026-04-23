@@ -18,6 +18,25 @@ export class PlaylistService {
     };
   }
 
+  yieldToMain() {
+    return new Promise((resolve) => {
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => resolve());
+        return;
+      }
+
+      setTimeout(resolve, 0);
+    });
+  }
+
+  throwIfAborted(signal) {
+    if (signal?.aborted) {
+      const error = new Error('Download cancelado pelo usuário');
+      error.name = 'AbortError';
+      throw error;
+    }
+  }
+
   parseSeasonEpisode(name = '') {
     if (!name) return null;
 
@@ -146,27 +165,44 @@ export class PlaylistService {
     return { type: 'live', primaryGroup, seriesInfo };
   }
 
-  async addPlaylist(playlistData) {
+  async addPlaylist(playlistData, requestOptions = {}) {
     try {
       const { type, name, url, username, password, epgSource, content, fileName } = playlistData;
+      const signal = requestOptions.signal;
+      const callbacks = {
+        onProgress: requestOptions.onProgress,
+        onStatus: requestOptions.onStatus
+      };
       
       let parsedData;
+      this.throwIfAborted(signal);
+
+      callbacks.onStatus?.({ phase: 'starting', message: 'Iniciando leitura da playlist' });
       
       if (type === 'xtream') {
         parsedData = await this.parsers.xtream.parse({
           url,
           username,
           password
-        });
+        }, requestOptions);
       } else if (type === 'upload') {
-        parsedData = await this.parsers.m3u.parse(content);
+        parsedData = await this.parsers.m3u.parse(content, requestOptions);
       } else {
-        parsedData = await this.parsers.m3u.parse(url);
+        parsedData = await this.parsers.m3u.parse(url, {
+          signal,
+          onProgress: callbacks.onProgress,
+          onStatus: callbacks.onStatus
+        });
       }
 
+      this.throwIfAborted(signal);
+      await this.yieldToMain();
 
-      
-      const itemsWithTypes = await this.classifyByExtension(parsedData.items);
+      callbacks.onStatus?.({ phase: 'organizing', message: 'Organizando itens da playlist' });
+      const itemsWithTypes = await this.classifyByExtension(parsedData.items, requestOptions);
+
+      this.throwIfAborted(signal);
+      await this.yieldToMain();
 
       const stats = {
         live: itemsWithTypes.filter(i => i.type === 'live').length,
@@ -174,12 +210,19 @@ export class PlaylistService {
         series: itemsWithTypes.filter(i => i.type === 'series').length
       };
 
+      callbacks.onStatus?.({ phase: 'enriching', message: 'Enriquecendo metadados' });
       const enrichedData = await this.enrichMetadata({
         ...parsedData,
         items: itemsWithTypes
-      });
-      
-      const categorized = this.categorizeContent(enrichedData);
+      }, requestOptions);
+
+      this.throwIfAborted(signal);
+      await this.yieldToMain();
+
+      callbacks.onStatus?.({ phase: 'categorizing', message: 'Separando canais, filmes e séries' });
+      const categorized = await this.categorizeContent(enrichedData, requestOptions);
+
+      this.throwIfAborted(signal);
 
       const totalItems = (categorized.live?.length || 0)
         + (categorized.movies?.length || 0)
@@ -195,20 +238,30 @@ export class PlaylistService {
         type,
         ...categorized,
         stats,
-        epg: epgSource ? await this.loadEPG(epgSource) : null,
+        epg: epgSource ? await this.loadEPG(epgSource, requestOptions) : null,
         createdAt: new Date().toISOString()
       };
 
+      callbacks.onStatus?.({ phase: 'saving', message: 'Salvando playlist no dispositivo' });
       await this.storage.savePlaylist(playlist);
       
       return playlist;
     } catch (error) {
+      if (error?.name === 'AbortError') {
+        throw error;
+      }
+
       throw new Error(`Erro ao adicionar playlist: ${error.message}`);
     }
   }
 
-  async classifyByExtension(items) {
-    const classified = items.map((item) => {
+  async classifyByExtension(items, requestOptions = {}) {
+    const classified = [];
+    const signal = requestOptions.signal;
+
+    for (let index = 0; index < items.length; index++) {
+      this.throwIfAborted(signal);
+      const item = items[index];
       const decision = this.classifyItemType(item);
       const sourceGroup = this.getPrimaryGroup(item);
       const baseItem = {
@@ -219,19 +272,26 @@ export class PlaylistService {
       };
 
       if (decision.type === 'series') {
-        return {
+        classified.push({
           ...baseItem,
           type: 'series',
           ...(decision.seriesInfo || {})
-        };
+        });
+        if (index % 200 === 0) {
+          await this.yieldToMain();
+        }
+        continue;
       }
 
       if (decision.type === 'vod') {
-        return { ...baseItem, type: 'vod' };
+        classified.push({ ...baseItem, type: 'vod' });
+      } else {
+        classified.push({ ...baseItem, type: 'live' });
       }
-
-      return { ...baseItem, type: 'live' };
-    });
+      if (index % 200 === 0) {
+        await this.yieldToMain();
+      }
+    }
 
     const stats = {
       live: classified.filter((item) => item.type === 'live').length,
@@ -243,7 +303,7 @@ export class PlaylistService {
     return classified;
   }
 
-  categorizeContent(data) {
+  async categorizeContent(data, requestOptions = {}) {
     const categories = {
       live: [],
       movies: [],
@@ -251,8 +311,11 @@ export class PlaylistService {
     };
 
     const seriesMap = new Map();
+    const signal = requestOptions.signal;
 
-    data.items.forEach(item => {
+    for (let index = 0; index < data.items.length; index++) {
+      this.throwIfAborted(signal);
+      const item = data.items[index];
       if (item.type === 'series') {
         const organizedEpisode = this.organizeSeries(item);
         const baseName = organizedEpisode.seriesName || organizedEpisode.name || organizedEpisode.title || 'Serie';
@@ -291,7 +354,11 @@ export class PlaylistService {
       } else {
         categories.live.push({ ...item, type: 'live' });
       }
-    });
+
+      if (index % 200 === 0) {
+        await this.yieldToMain();
+      }
+    }
 
     categories.series = Array.from(seriesMap.values())
       .map((seriesItem) => ({
@@ -323,19 +390,80 @@ export class PlaylistService {
     return episode;
   }
 
-  async enrichMetadata(data) {
+  async enrichMetadata(data, requestOptions = {}) {
+    const sourceItems = Array.isArray(data.items) ? data.items : [];
+    const totalItems = sourceItems.length;
+    const items = new Array(totalItems);
+    const signal = requestOptions.signal;
+    const callbacks = {
+      onStatus: requestOptions.onStatus,
+      onProgress: requestOptions.onProgress
+    };
+
+    const batchSize = 250;
+
+    if (totalItems === 0) {
+      return {
+        ...data,
+        items: []
+      };
+    }
+
+    for (let start = 0; start < totalItems; start += batchSize) {
+      this.throwIfAborted(signal);
+
+      const end = Math.min(start + batchSize, totalItems);
+      const enrichPromises = [];
+
+      for (let index = start; index < end; index++) {
+        const item = sourceItems[index];
+
+        if (item?.type === 'live') {
+          items[index] = {
+            ...item,
+            metadata: this.metadataExtractor.extractLive(item)
+          };
+          continue;
+        }
+
+        enrichPromises.push(
+          this.metadataExtractor.extract(item).then((metadata) => ({ index, item, metadata }))
+        );
+      }
+
+      if (enrichPromises.length > 0) {
+        const enrichedBatch = await Promise.all(enrichPromises);
+        for (const entry of enrichedBatch) {
+          items[entry.index] = {
+            ...entry.item,
+            metadata: entry.metadata
+          };
+        }
+      }
+
+      const progressValue = Math.round((end / totalItems) * 100);
+      callbacks.onStatus?.({
+        phase: 'enriching',
+        message: `Enriquecendo metadados (${end}/${totalItems})`
+      });
+
+      callbacks.onProgress?.({
+        phase: 'enriching',
+        percentage: progressValue,
+        message: `Metadados processados: ${end}/${totalItems}`
+      });
+
+      await this.yieldToMain();
+    }
+
     return {
       ...data,
-      items: await Promise.all(
-        data.items.map(async item => ({
-          ...item,
-          metadata: await this.metadataExtractor.extract(item)
-        }))
-      )
+      items
     };
   }
 
-  async loadEPG(source) {
+  async loadEPG(source, requestOptions = {}) {
+    this.throwIfAborted(requestOptions.signal);
     const parser = new EPGParser();
     return await parser.parse(source);
   }

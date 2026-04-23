@@ -1,8 +1,11 @@
+import { resolvePlaylistSource } from '../../network/proxy';
+
 export class XtreamParser {
-  async fetchJsonDirect(targetUrl) {
-    const response = await fetch(targetUrl, {
+  async fetchJsonDirect(targetUrl, requestOptions = {}) {
+    const response = await fetch(resolvePlaylistSource(targetUrl), {
       method: 'GET',
-      cache: 'no-store'
+      cache: 'no-store',
+      signal: requestOptions.signal
     });
 
     if (!response.ok) {
@@ -12,7 +15,7 @@ export class XtreamParser {
     return response.json();
   }
 
-  async parse({ url, username, password, server }) {
+  async parse({ url, username, password, server }, requestOptions = {}) {
     
     const serverUrl = url || server;
     
@@ -42,16 +45,16 @@ export class XtreamParser {
       }
       
       
-      const userInfo = await this.fetchUserInfo(baseUrl, username, password);
+      const userInfo = await this.fetchUserInfo(baseUrl, username, password, requestOptions);
       
       
-      const liveStreams = await this.fetchLiveStreams(baseUrl, username, password);
+      const liveStreams = await this.fetchLiveStreams(baseUrl, username, password, requestOptions);
       
       
-      const vodStreams = await this.fetchVodStreams(baseUrl, username, password);
+      const vodStreams = await this.fetchVodStreams(baseUrl, username, password, requestOptions);
       
       
-      const series = await this.fetchSeries(baseUrl, username, password);
+      const series = await this.fetchSeries(baseUrl, username, password, requestOptions);
 
       return {
         type: 'xtream',
@@ -67,9 +70,10 @@ export class XtreamParser {
     }
   }
 
-  async fetchUserInfo(baseUrl, username, password) {
+  async fetchUserInfo(baseUrl, username, password, requestOptions = {}) {
     const data = await this.fetchJsonDirect(
-      `${baseUrl}/player_api.php?username=${username}&password=${password}`
+      `${baseUrl}/player_api.php?username=${username}&password=${password}`,
+      requestOptions
     );
     if (data.user_info === undefined) {
       throw new Error('Credenciais inválidas ou servidor não respondeu corretamente');
@@ -77,23 +81,26 @@ export class XtreamParser {
     return data;
   }
 
-  async fetchLiveStreams(baseUrl, username, password) {
+  async fetchLiveStreams(baseUrl, username, password, requestOptions = {}) {
     const data = await this.fetchJsonDirect(
-      `${baseUrl}/player_api.php?username=${username}&password=${password}&action=get_live_streams`
+      `${baseUrl}/player_api.php?username=${username}&password=${password}&action=get_live_streams`,
+      requestOptions
     );
     return Array.isArray(data) ? data : [];
   }
 
-  async fetchVodStreams(baseUrl, username, password) {
+  async fetchVodStreams(baseUrl, username, password, requestOptions = {}) {
     const data = await this.fetchJsonDirect(
-      `${baseUrl}/player_api.php?username=${username}&password=${password}&action=get_vod_streams`
+      `${baseUrl}/player_api.php?username=${username}&password=${password}&action=get_vod_streams`,
+      requestOptions
     );
     return Array.isArray(data) ? data : [];
   }
 
-  async fetchSeries(baseUrl, username, password) {
+  async fetchSeries(baseUrl, username, password, requestOptions = {}) {
     const data = await this.fetchJsonDirect(
-      `${baseUrl}/player_api.php?username=${username}&password=${password}&action=get_series`
+      `${baseUrl}/player_api.php?username=${username}&password=${password}&action=get_series`,
+      requestOptions
     );
     return Array.isArray(data) ? data : [];
   }

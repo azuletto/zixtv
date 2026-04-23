@@ -13,8 +13,26 @@ const SeriesScreen = lazy(() => import('../../modules/series/SeriesScreen'));
 const LiveScreen = lazy(() => import('../../modules/live/LiveScreen'));
 const SettingsScreen = lazy(() => import('../../modules/settings/SettingsScreen'));
 
+const RouterBootLoader = () => (
+  <div className="min-h-screen bg-zinc-950 w-full overflow-hidden">
+    <div className="absolute inset-0">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-red-600/5 via-zinc-950 to-zinc-950" />
+      <div
+        className="absolute inset-0 opacity-20"
+        style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, rgb(255 255 255 / 0.02) 1px, transparent 0)`,
+          backgroundSize: '48px 48px'
+        }}
+      />
+    </div>
+    <div className="relative z-10 min-h-screen flex items-center justify-center">
+      <LoadingSpinner size="lg" />
+    </div>
+  </div>
+);
+
 const AppRouter = () => {
-  const { playlists, isLoading, isFetching } = usePlaylist();
+  const { playlists, activePlaylist, isLoading, isFetching, isHydrated } = usePlaylist();
   const [sidebarWidth, setSidebarWidth] = useState(256);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const sidebarWidthRef = useRef(256);
@@ -23,8 +41,7 @@ const AppRouter = () => {
   const rafRef = useRef(null);
   
   const playlistsArray = Array.isArray(playlists) ? playlists : [];
-  const hasPlaylist = playlistsArray.length > 0;
-
+  const hasPlaylist = playlistsArray.length > 0 || Boolean(activePlaylist);
   const applySidebarWidth = useCallback((width) => {
     if (!Number.isFinite(width) || width <= 0) return;
     if (width === sidebarWidthRef.current) return;
@@ -88,7 +105,7 @@ const AppRouter = () => {
       {hasPlaylist && <Sidebar />}
       
       <main 
-        className="flex-1 transition-all duration-300"
+        className={`flex-1 ${hasPlaylist ? 'transition-all duration-300' : ''}`}
         style={{ 
           marginLeft: hasPlaylist ? `${sidebarWidth}px` : 0,
           width: hasPlaylist ? `calc(100% - ${sidebarWidth}px)` : '100%'
