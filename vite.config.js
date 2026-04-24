@@ -38,7 +38,7 @@ export default defineConfig({
       }
     }
   ],
-  envPrefix: ['VITE_', 'TMDB_'],
+  envPrefix: ['VITE_', 'TMDB_', 'REACT_APP_', 'MAINTENANCE_'],
   
   root: path.resolve(__dirname, '.'), 
   publicDir: path.resolve(__dirname, 'public'), 

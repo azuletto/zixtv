@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { usePlaylist } from '../../shared/hooks/usePlaylist';
 import LoadingSpinner from '../../shared/components/Loaders/Spinner';
 import Sidebar from '../../shared/components/Sidebar/Sidebar';
@@ -40,7 +40,17 @@ const AppRouter = () => {
   const resizeObserverRef = useRef(null);
   const rafRef = useRef(null);
   
-  const isMaintenanceMode = process.env.REACT_APP_MAINTENANCE_MODE === 'true';
+  const viteMaintenanceFlag =
+    typeof import.meta !== 'undefined'
+      ? (
+          import.meta.env?.VITE_MAINTENANCE_MODE ??
+          import.meta.env?.MAINTENANCE_MODE ??
+          import.meta.env?.REACT_APP_MAINTENANCE_MODE
+        )
+      : undefined;
+  const legacyMaintenanceFlag =
+    typeof process !== 'undefined' ? process.env?.REACT_APP_MAINTENANCE_MODE : undefined;
+  const isMaintenanceMode = String(viteMaintenanceFlag ?? legacyMaintenanceFlag ?? '').toLowerCase() === 'true';
   
   const playlistsArray = Array.isArray(playlists) ? playlists : [];
   const hasPlaylist = playlistsArray.length > 0 || Boolean(activePlaylist);
@@ -103,7 +113,15 @@ const AppRouter = () => {
   }, [hasPlaylist, applySidebarWidth, scheduleSidebarMeasure]);
 
   if (isMaintenanceMode) {
-    return <InMaintenance sidebarWidth={sidebarWidth} isSidebarCollapsed={isSidebarCollapsed} />;
+    return (
+      <Routes>
+        <Route
+          path="/maintenance"
+          element={<InMaintenance sidebarWidth={sidebarWidth} isSidebarCollapsed={isSidebarCollapsed} />}
+        />
+        <Route path="*" element={<Navigate to="/maintenance" replace />} />
+      </Routes>
+    );
   }
 
   return (
