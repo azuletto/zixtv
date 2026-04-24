@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { usePlaylist } from '../../shared/hooks/usePlaylist';
@@ -7,6 +6,7 @@ import Sidebar from '../../shared/components/Sidebar/Sidebar';
 
 import HomeScreen from '../../modules/home/HomeScreen';
 import AboutScreen from '../../modules/about/AboutScreen';
+import InMaintenance from '../../modules/maintenance/InMaintenanceScreen';
 
 const MoviesScreen = lazy(() => import('../../modules/movies/MoviesScreen'));
 const SeriesScreen = lazy(() => import('../../modules/series/SeriesScreen'));
@@ -64,7 +64,6 @@ const AppRouter = () => {
     });
   }, [applySidebarWidth]);
 
-  
   useEffect(() => {
     if (!hasPlaylist) {
       sidebarRef.current = null;
@@ -117,6 +116,7 @@ const AppRouter = () => {
           </div>
         }>
           <Routes>
+            <Route path="/maintenance" element={<InMaintenance sidebarWidth={sidebarWidth} isSidebarCollapsed={isSidebarCollapsed} />} />
             <Route 
               path="/" 
               element={
