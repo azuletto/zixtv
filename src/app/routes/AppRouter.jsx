@@ -40,8 +40,11 @@ const AppRouter = () => {
   const resizeObserverRef = useRef(null);
   const rafRef = useRef(null);
   
+  const isMaintenanceMode = process.env.REACT_APP_MAINTENANCE_MODE === 'true';
+  
   const playlistsArray = Array.isArray(playlists) ? playlists : [];
   const hasPlaylist = playlistsArray.length > 0 || Boolean(activePlaylist);
+  
   const applySidebarWidth = useCallback((width) => {
     if (!Number.isFinite(width) || width <= 0) return;
     if (width === sidebarWidthRef.current) return;
@@ -99,6 +102,10 @@ const AppRouter = () => {
     };
   }, [hasPlaylist, applySidebarWidth, scheduleSidebarMeasure]);
 
+  if (isMaintenanceMode) {
+    return <InMaintenance sidebarWidth={sidebarWidth} isSidebarCollapsed={isSidebarCollapsed} />;
+  }
+
   return (
     <div className="flex min-h-screen bg-zinc-950">
       {hasPlaylist && <Sidebar />}
@@ -116,7 +123,6 @@ const AppRouter = () => {
           </div>
         }>
           <Routes>
-            <Route path="/maintenance" element={<InMaintenance sidebarWidth={sidebarWidth} isSidebarCollapsed={isSidebarCollapsed} />} />
             <Route 
               path="/" 
               element={
