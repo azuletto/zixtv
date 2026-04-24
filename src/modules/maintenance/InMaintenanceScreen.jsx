@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import favicon from '/favicon.png'; // Importa o favicon corretamente
 
 const InMaintenance = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -159,10 +160,10 @@ const InMaintenance = () => {
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 className="absolute inset-0 rounded-full bg-red-500/20"
               />
-              {/* Logo */}
+              {/* Logo - usando a imagem importada */}
               <div className="relative w-14 h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center shadow-lg shadow-red-500/20">
                 <img 
-                  src="/favicon.png" 
+                  src={favicon}
                   alt="Zix TV" 
                   className="w-9 h-9 md:w-10 md:h-10 object-contain"
                 />
