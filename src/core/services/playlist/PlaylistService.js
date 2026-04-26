@@ -113,10 +113,50 @@ export class PlaylistService {
     return keywords.some((keyword) => text.includes(keyword));
   }
 
-  classifyItemType(item = {}) {
+  buildGroupProfiles(items = []) {
+    const profiles = new Map();
+
+    for (const item of Array.isArray(items) ? items : []) {
+      const group = this.getPrimaryGroup(item);
+      const url = String(item?.url || '');
+      const stats = profiles.get(group) || {
+        total: 0,
+        tsCount: 0,
+        vodExtCount: 0
+      };
+
+      stats.total += 1;
+      if (this.hasExtension(url, ['.ts'])) {
+        stats.tsCount += 1;
+      }
+      if (this.hasExtension(url, ['.mp4', '.mkv', '.avi', '.mov', '.wmv'])) {
+        stats.vodExtCount += 1;
+      }
+
+      profiles.set(group, stats);
+    }
+
+    return profiles;
+  }
+
+  shouldTreatTsAsVod(groupProfile = null) {
+    if (!groupProfile) return false;
+    const tsCount = Number(groupProfile.tsCount || 0);
+    const vodExtCount = Number(groupProfile.vodExtCount || 0);
+    const total = Number(groupProfile.total || 0);
+
+    if (total < 4) return false;
+    if (tsCount <= 0 || tsCount > 2) return false;
+    if (vodExtCount < 3) return false;
+
+    return vodExtCount > tsCount;
+  }
+
+  classifyItemType(item = {}, options = {}) {
     const explicitType = this.normalizeSignalText(item.type || '');
     const name = item.name || item.title || '';
     const primaryGroup = this.getPrimaryGroup(item);
+    const groupProfile = options.groupProfiles?.get?.(primaryGroup) || null;
     const url = String(item.url || '');
     const lowerUrl = url.toLowerCase();
     const duration = Number(item.duration);
@@ -131,6 +171,13 @@ export class PlaylistService {
     const isMp4 = this.hasExtension(lowerUrl, ['.mp4']);
     const isDirectVod = this.hasExtension(lowerUrl, ['.mp4', '.mkv', '.avi', '.mov', '.wmv']);
     const isHls = lowerUrl.includes('.m3u8');
+
+    if (isTs) {
+      if (this.shouldTreatTsAsVod(groupProfile)) {
+        return { type: 'vod', primaryGroup, seriesInfo: null };
+      }
+      return { type: 'live', primaryGroup, seriesInfo: null };
+    }
 
     if (isMp4) {
       if (seriesInfo) return { type: 'series', primaryGroup, seriesInfo };
@@ -151,7 +198,6 @@ export class PlaylistService {
     if (explicitType === 'vod' && !seriesInfo) return { type: 'vod', primaryGroup, seriesInfo };
 
     if (seriesInfo) return { type: 'series', primaryGroup, seriesInfo };
-    if (isTs) return { type: 'live', primaryGroup, seriesInfo };
     if (isDirectVod) return { type: 'vod', primaryGroup, seriesInfo };
 
     if (isHls) {
@@ -258,11 +304,12 @@ export class PlaylistService {
   async classifyByExtension(items, requestOptions = {}) {
     const classified = [];
     const signal = requestOptions.signal;
+    const groupProfiles = this.buildGroupProfiles(items);
 
     for (let index = 0; index < items.length; index++) {
       this.throwIfAborted(signal);
       const item = items[index];
-      const decision = this.classifyItemType(item);
+      const decision = this.classifyItemType(item, { groupProfiles });
       const sourceGroup = this.getPrimaryGroup(item);
       const baseItem = {
         ...item,

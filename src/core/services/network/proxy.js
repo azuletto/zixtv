@@ -51,19 +51,28 @@ export const buildProxyUrl = (url = '') => {
   return `${endpoint}?url=${encodeURIComponent(String(url).trim())}`;
 };
 
+const shouldForceProxy = (options = {}) => options?.forceProxy === true;
+
 export const resolveMediaUrl = (url = '') => {
   if (!url) return url;
   if (!isAbsoluteNetworkUrl(url)) return url;
+  if (shouldProxyUrl(url)) {
+    return buildProxyUrl(url);
+  }
 
-  return buildProxyUrl(url);
+  return url;
 };
 
-export const resolvePlaylistSource = (source = '') => {
+export const resolvePlaylistSource = (source = '', options = {}) => {
   if (!source) return source;
 
   if (!isAbsoluteNetworkUrl(source)) {
     return source;
   }
 
-  return buildProxyUrl(source);
+  if (shouldForceProxy(options) || shouldProxyUrl(source)) {
+    return buildProxyUrl(source);
+  }
+
+  return source;
 };

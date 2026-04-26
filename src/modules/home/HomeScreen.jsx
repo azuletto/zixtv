@@ -251,6 +251,64 @@ const getSpotlightType = (item = {}) => {
   return 'other';
 };
 
+const getHeroCandidateScore = (item = {}) => {
+  const hasBackdrop = Boolean(item.backdropUrl || item.backdropPath);
+  const hasPoster = Boolean(item.posterUrl || item.posterPath);
+  const overviewLength = String(item.overview || '').trim().length;
+  const voteAverage = Number(item.voteAverage || 0);
+  const popularity = Number(item.popularity || 0);
+
+  let score = 0;
+  if (hasBackdrop) score += 100;
+  if (hasPoster) score += 25;
+  score += Math.min(45, overviewLength / 5);
+  score += Math.min(35, voteAverage * 3.5);
+  score += Math.min(40, popularity / 5);
+
+  return score;
+};
+
+const isStrongHeroCandidate = (item = {}, options = {}) => {
+  const relaxed = options.relaxed === true;
+  const title = String(item.displayTitle || item.title || item.name || '').trim();
+  const hasBackdrop = Boolean(item.backdropUrl || item.backdropPath);
+  const hasPoster = Boolean(item.posterUrl || item.posterPath);
+  const overviewLength = String(item.overview || '').trim().length;
+
+  if (!title) return false;
+  if (!hasBackdrop && !hasPoster) return false;
+  if (relaxed) return true;
+  return hasBackdrop && overviewLength >= 20;
+};
+
+const selectHeroItems = ({ preferred = [], fallback = [], targetCount = 5 }) => {
+  const candidateMap = new Map();
+
+  const push = (item) => {
+    if (!item) return;
+    const key = getHomeSpotlightKey(item);
+    if (!key) return;
+    if (!isStrongHeroCandidate(item, { relaxed: true })) return;
+
+    const score = getHeroCandidateScore(item) + getHomeSpotlightRank(item);
+    const current = candidateMap.get(key);
+    if (!current || score > current.score) {
+      candidateMap.set(key, { item, score });
+    }
+  };
+
+  preferred.forEach(push);
+  fallback.forEach(push);
+
+  const ranked = Array.from(candidateMap.values())
+    .map((entry) => entry.item)
+    .sort((a, b) => (getHeroCandidateScore(b) + getHomeSpotlightRank(b)) - (getHeroCandidateScore(a) + getHomeSpotlightRank(a)));
+
+  const strict = ranked.filter((item) => isStrongHeroCandidate(item, { relaxed: false }));
+  const source = strict.length >= targetCount ? strict : ranked;
+  return mixSpotlightItems({ items: source, targetCount }).slice(0, targetCount);
+};
+
 const mixSpotlightItems = ({ items = [], targetCount = 0 }) => {
   const source = Array.isArray(items) ? items.filter(Boolean) : [];
   if (source.length <= 2) return source.slice(0, targetCount || source.length);
@@ -764,9 +822,10 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
       setIsInitialLoading(true);
       
       try {
-        const [weekPage1, weekPage2] = await Promise.all([
+        const [weekPage1, weekPage2, apiHeroItems] = await Promise.all([
           tmdbService.getTrending('week', 1),
-          tmdbService.getTrending('week', 2)
+          tmdbService.getTrending('week', 2),
+          tmdbService.getHeroContent().catch(() => [])
         ]);
 
         const weeklyMap = new Map();
@@ -801,16 +860,33 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
           targetCount: Math.max(movieMatches.length + seriesMatches.length, 40)
         });
 
-        const heroItems = fillSpotlightItems({
+        const heroFromMatches = fillSpotlightItems({
           resolvedItems: weeklyMatches,
           targetCount: 5,
           preferTypes: ['movie', 'series']
         });
 
+        const heroFallbackPool = Array.isArray(apiHeroItems)
+          ? apiHeroItems.filter((item) => normalizeTmdbType(item?.type) !== 'other')
+          : [];
+
+        const weeklyFallbackPool = weeklyList.filter((item) => normalizeTmdbType(item?.type) !== 'other');
+
+        const heroItems = selectHeroItems({
+          preferred: heroFromMatches,
+          fallback: [...heroFallbackPool, ...weeklyFallbackPool],
+          targetCount: 5
+        });
+
         const heroKeys = new Set(heroItems.map((item) => getHomeSpotlightKey(item)).filter(Boolean));
 
+        const matchedCandidates = mixSpotlightItems({
+          items: [...weeklyMatches, ...weeklyFallbackPool],
+          targetCount: 80
+        });
+
         const matched = fillSpotlightItems({
-          resolvedItems: weeklyMatches,
+          resolvedItems: matchedCandidates,
           targetCount: 15,
           excludeKeys: heroKeys,
           preferTypes: ['movie', 'series']
@@ -870,16 +946,14 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
   const movieCategories = useMemo(() => {
     return Array.from(new Set(
       userMovies
-        .map((item) => item.groupTitle || item.group || 'Filmes')
-        .filter(Boolean)
+        .map((item) => item.groupTitle || item.group || item.originalGroup || 'Sem categoria')
     )).sort((a, b) => a.localeCompare(b));
   }, [userMovies]);
 
   const seriesCategories = useMemo(() => {
     return Array.from(new Set(
       userSeries
-        .map((item) => item.groupTitle || item.group || 'Series')
-        .filter(Boolean)
+        .map((item) => item.groupTitle || item.group || item.originalGroup || 'Sem categoria')
     )).sort((a, b) => a.localeCompare(b));
   }, [userSeries]);
 

@@ -11,6 +11,7 @@ import {
 } from '/src/shared/icons/heroiconsOutlineCompat';
 import { useMetadata } from '../../shared/hooks/useMetadata';
 import { tmdbService } from '../../core/services/tmdb/TMDBService';
+import { resolveMediaUrl } from '../../core/services/network/proxy';
 import CustomPlayer from '../player/CustomPlayer';
 import ActionModal from '../../shared/components/Modal/ActionModal';
 
@@ -129,8 +130,8 @@ const MovieDetails = ({ movie, type = 'movie', onClose }) => {
   const displayData = details || movie;
   const title = displayData.title || displayData.name || movie.name;
   const overview = displayData.overview || getDescription();
-  const posterUrl = movie?.tvg?.logo || movie?.logo || displayData.posterUrl || getPosterUrl();
-  const backdropUrl = movie?.tvg?.logo || movie?.logo || displayData.backdropUrl || getBackdropUrl();
+  const posterUrl = resolveMediaUrl(movie?.tvg?.logo || movie?.logo || displayData.posterUrl || getPosterUrl());
+  const backdropUrl = resolveMediaUrl(movie?.tvg?.logo || movie?.logo || displayData.backdropUrl || getBackdropUrl());
   const rating = displayData.voteAverage || getFormattedRating();
   const year = displayData.year || getYear();
   const genres = displayData.genres || [];

@@ -10,148 +10,9 @@ import ViewModeToggle from '../../shared/components/ViewModeToggle/ViewModeToggl
 import CustomPlayer from '../player/CustomPlayer';
 import { ChevronLeftIcon, ChevronRightIcon, SearchIcon, XIcon, ChevronDownIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 
-const genreDictionary = {
-  
-  'acao': 'Ação',
-  'ação': 'Ação',
-  'action': 'Ação',
-  'acão': 'Ação',
-  'accao': 'Ação',
-  'açao': 'Ação',
-  
-  
-  'aventura': 'Aventura',
-  'adventure': 'Aventura',
-  'aventura e acao': 'Ação e Aventura',
-  'aventura e ação': 'Ação e Aventura',
-  'acao e aventura': 'Ação e Aventura',
-  'ação e aventura': 'Ação e Aventura',
-  'action adventure': 'Ação e Aventura',
-  
-  
-  'comedia': 'Comédia',
-  'comédia': 'Comédia',
-  'comedy': 'Comédia',
-  'comedia romantica': 'Comédia Romântica',
-  'comédia romântica': 'Comédia Romântica',
-  'romantic comedy': 'Comédia Romântica',
-  'sitcom': 'Sitcom',
-  'comedia dramatica': 'Comédia Dramática',
-  'comédia dramática': 'Comédia Dramática',
-  
-  
-  'drama': 'Drama',
-  'dramatico': 'Drama',
-  'dramático': 'Drama',
-  'dramatic': 'Drama',
-  'drama romantico': 'Drama Romântico',
-  'drama romântico': 'Drama Romântico',
-  
-  
-  'terror': 'Terror',
-  'horror': 'Terror',
-  'suspense': 'Suspense',
-  'thriller': 'Suspense',
-  
-  
-  'ficcao cientifica': 'Ficção Científica',
-  'ficção científica': 'Ficção Científica',
-  'science fiction': 'Ficção Científica',
-  'sci-fi': 'Ficção Científica',
-  'scifi': 'Ficção Científica',
-  
-  
-  'fantasia': 'Fantasia',
-  'fantasy': 'Fantasia',
-  
-  
-  'romance': 'Romance',
-  'romantico': 'Romance',
-  'romântico': 'Romance',
-  'romantic': 'Romance',
-  
-  
-  'faroeste': 'Faroeste',
-  'western': 'Faroeste',
-  
-  
-  'animacao': 'Animação',
-  'animação': 'Animação',
-  'animation': 'Animação',
-  'anime': 'Anime',
-  
-  
-  'documentario': 'Documentário',
-  'documentário': 'Documentário',
-  'documentary': 'Documentário',
-  
-  
-  'policial': 'Policial',
-  'crime': 'Policial',
-  
-  
-  'guerra': 'Guerra',
-  'war': 'Guerra',
-  
-  
-  'musical': 'Musical',
-  'music': 'Musical',
-  
-  
-  'biografia': 'Biografia',
-  'biography': 'Biografia',
-  
-  
-  'esporte': 'Esporte',
-  'sports': 'Esporte',
-  
-  
-  'historia': 'História',
-  'história': 'História',
-  'history': 'História',
-  
-  
-  'familia': 'Família',
-  'família': 'Família',
-  'family': 'Família',
-  'infantil': 'Infantil',
-  
-  
-  'reality': 'Reality Show',
-  'reality show': 'Reality Show',
-
-};
-
-const normalizeText = (text) => {
-  if (!text) return '';
-  return text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s]/g, '');
-};
-
-const capitalizeWords = (text) => {
-  if (!text) return '';
-  return text
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-};
-
-const normalizeGenre = (rawGenre) => {
-  if (!rawGenre) return 'Outros';
-  
-  const normalized = normalizeText(rawGenre);
-  
-  
-  if (genreDictionary[normalized]) {
-    return genreDictionary[normalized];
-  }
-  
-  
-  return capitalizeWords(rawGenre.slice(0, 30));
+const resolveCategoryLabel = (value = '') => {
+  const trimmed = String(value || '').trim();
+  return trimmed || 'Sem categoria';
 };
 
 const cleanTitle = (title) => {
@@ -174,18 +35,13 @@ const MoviesScreen = () => {
   
   
   const moviesWithCategories = useMemo(() => {
-    
     const result = [];
-    const len = Math.min(allMovies.length, 5000); 
+    const len = allMovies.length;
     
     for (let i = 0; i < len; i++) {
       const movie = allMovies[i];
-      
-      
-      let rawCategory = movie.groupTitle || movie.metadata?.genre || movie.genre;
-      
-      
-      const displayCategory = normalizeGenre(rawCategory);
+      const rawCategory = movie.groupTitle || movie.group || movie.originalGroup || movie.metadata?.genre || movie.genre;
+      const displayCategory = resolveCategoryLabel(rawCategory);
       
       result.push({
         ...movie,
@@ -218,11 +74,11 @@ const MoviesScreen = () => {
   
   const categories = useMemo(() => {
     const categorySet = new Set();
-    const len = Math.min(moviesWithCategories.length, 5000);
+    const len = moviesWithCategories.length;
     
     for (let i = 0; i < len; i++) {
       const cat = moviesWithCategories[i].categoryDisplay;
-      if (cat && cat !== 'Outros') {
+      if (cat) {
         categorySet.add(cat);
       }
     }

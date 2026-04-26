@@ -2,6 +2,7 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { PlayIcon, PlusIcon, ThumbUpIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 import { useUIStore } from '../../../app/store/uiStore';
+import { resolveMediaUrl } from '../../../core/services/network/proxy';
 
 const FALLBACK_IMAGE = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'450\' viewBox=\'0 0 300 450\'%3E%3Crect width=\'300\' height=\'450\' fill=\'%2318181b\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'Arial\' font-size=\'14\' fill=\'%23666666\'%3ESem Imagem%3C/text%3E%3C/svg%3E';
 
@@ -74,9 +75,9 @@ const MediaCard = ({ item, type, imageFit = 'cover', imageScale = 0.94, imagePad
   const isTMDBItem = type === 'tmdb';
   const isLive = type === 'live';
 
-  const imageUrl = localImageError 
-    ? FALLBACK_IMAGE 
-    : (normalizedItem.tvg?.logo || normalizedItem.logo || normalizedItem.posterUrl || FALLBACK_IMAGE);
+  const imageUrl = localImageError
+    ? FALLBACK_IMAGE
+    : resolveMediaUrl(normalizedItem.tvg?.logo || normalizedItem.logo || normalizedItem.posterUrl || FALLBACK_IMAGE);
 
   return (
     <div

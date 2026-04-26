@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { PlayIcon, InformationCircleIcon } from '/src/shared/icons/heroiconsOutlineCompat';
+import { resolveMediaUrl } from '../../../core/services/network/proxy';
 
 const normalizeDescription = (value, fallback = 'Sinopse não disponível') => {
   const raw = String(value || '').trim();
@@ -14,7 +15,7 @@ const normalizeDescription = (value, fallback = 'Sinopse não disponível') => {
     .trim() || fallback;
 };
 
-const getItemImage = (item = {}) => item.backdropUrl || item.posterUrl || '';
+const getItemImage = (item = {}) => resolveMediaUrl(item.backdropUrl || item.posterUrl || '');
 
 const HeroPlaceholder = ({ showLabel = false }) => (
   <div className="absolute inset-0 overflow-hidden">

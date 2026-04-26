@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { PlayIcon } from '/src/shared/icons/heroiconsOutlineCompat';
+import { resolveMediaUrl } from '../../core/services/network/proxy';
 
 const FALLBACK_THUMB = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="480" height="270" viewBox="0 0 480 270"%3E%3Crect width="480" height="270" fill="%2318181b"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="16" fill="%23888888"%3ESem Imagem%3C/text%3E%3C/svg%3E';
 
@@ -42,7 +43,7 @@ const EpisodeItem = ({ episode, index, onSelect }) => {
   const sequenceLabel = typeof episode.sequence === 'number'
     ? `#${episode.sequence}`
     : `S${String(episode.season || 0).padStart(2, '0')}E${String(episode.episode || 0).padStart(2, '0')}`;
-  const thumb = episode.posterUrl || episode.backdropUrl || FALLBACK_THUMB;
+  const thumb = resolveMediaUrl(episode.posterUrl || episode.backdropUrl || FALLBACK_THUMB);
 
   return (
     <div

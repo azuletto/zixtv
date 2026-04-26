@@ -1,6 +1,7 @@
 ﻿
 import { useState, useEffect, useRef } from 'react';
 import { metadataExtractor } from '../../core/utils/metadata/MetadataExtractor';
+import { resolveMediaUrl } from '../../core/services/network/proxy';
 
 const metadataCache = new Map();
 const METADATA_CACHE_TTL = 15 * 60 * 1000;
@@ -64,18 +65,13 @@ export const useMetadata = (item) => {
   }, [item, metadata]);
 
   const getPosterUrl = () => {
-    
-    if (item?.tvg?.logo) return item.tvg.logo;
-    if (item?.logo) return item.logo;
-    if (item?.posterUrl) return item.posterUrl;
-    return metadata?.poster || null;
+    const source = item?.tvg?.logo || item?.logo || item?.posterUrl || metadata?.poster || null;
+    return resolveMediaUrl(source);
   };
   
   const getBackdropUrl = () => {
-    if (item?.tvg?.logo) return item.tvg.logo;
-    if (item?.logo) return item.logo;
-    if (item?.backdropUrl) return item.backdropUrl;
-    return metadata?.backdrop || null;
+    const source = item?.tvg?.logo || item?.logo || item?.backdropUrl || metadata?.backdrop || null;
+    return resolveMediaUrl(source);
   };
   
   const getFormattedRating = () => {

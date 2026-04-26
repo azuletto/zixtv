@@ -1,14 +1,39 @@
 
 
 import Hls from 'hls.js';
+import { buildProxyUrl } from '../network/proxy';
+
+const shouldProxyHttpUrl = (value) => typeof value === 'string' && value.startsWith('http://');
+
+const toProxyAwareUrl = (value) => {
+  if (!value || typeof value !== 'string') return value;
+  if (value.startsWith('/api/proxy?url=')) return value;
+  if (shouldProxyHttpUrl(value)) return buildProxyUrl(value);
+  return value;
+};
+
+const createProxyAwareLoader = () => {
+  const BaseLoader = Hls.DefaultConfig.loader;
+
+  return class ProxyAwareLoader extends BaseLoader {
+    load(context, config, callbacks) {
+      if (context && typeof context.url === 'string') {
+        context.url = toProxyAwareUrl(context.url);
+      }
+
+      return super.load(context, config, callbacks);
+    }
+  };
+};
 
 export class HLSPlayer {
   constructor(videoElement) {
     this.video = videoElement;
     this.hls = null;
     this.qualityLevels = [];
-    this.currentLevel = -1; 
+    this.currentLevel = -1;
     this.eventListeners = new Map();
+    this.bandwidthInterval = null;
   }
 
   loadSource(url) {
@@ -17,18 +42,24 @@ export class HLSPlayer {
     }
 
     if (Hls.isSupported()) {
+      const sourceUrl = toProxyAwareUrl(url);
       this.hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: true,
         backBufferLength: 90,
         maxBufferLength: 30,
         maxMaxBufferLength: 600,
         maxBufferSize: 60 * 1000 * 1000,
         maxBufferHole: 0.5,
         lowLatencyMode: false,
+        loader: createProxyAwareLoader(),
+        xhrSetup: (xhr, requestUrl) => {
+          if (typeof requestUrl === 'string' && requestUrl.startsWith('http://')) {
+            xhr.open('GET', buildProxyUrl(requestUrl), true);
+          }
+        },
       });
 
-      this.hls.loadSource(url);
+      this.hls.loadSource(sourceUrl);
       this.hls.attachMedia(this.video);
 
       this.setupEventListeners();
@@ -37,7 +68,7 @@ export class HLSPlayer {
       return true;
     } else if (this.video.canPlayType('application/vnd.apple.mpegurl')) {
       
-      this.video.src = url;
+      this.video.src = toProxyAwareUrl(url);
       return true;
     }
 
@@ -75,8 +106,11 @@ export class HLSPlayer {
   }
 
   setupQualityListeners() {
-    
-    setInterval(() => {
+    if (this.bandwidthInterval) {
+      clearInterval(this.bandwidthInterval);
+    }
+
+    this.bandwidthInterval = setInterval(() => {
       if (this.hls && this.currentLevel === -1) {
         const bandwidth = this.hls.bandwidthEstimate;
         this.emit('bandwidth', bandwidth);
@@ -118,6 +152,11 @@ export class HLSPlayer {
   }
 
   destroy() {
+    if (this.bandwidthInterval) {
+      clearInterval(this.bandwidthInterval);
+      this.bandwidthInterval = null;
+    }
+
     if (this.hls) {
       this.hls.destroy();
       this.hls = null;

@@ -21,8 +21,11 @@ import {
   ChipIcon
 } from '/src/shared/icons/heroiconsOutlineCompat';
 import LoadingSpinner from '../../shared/components/Loaders/Spinner';
+import { resolveMediaUrl } from '../../core/services/network/proxy';
 
 const CustomPlayer = lazy(() => import('../player/CustomPlayer'));
+
+const resolveChannelLogo = (channel) => resolveMediaUrl(channel?.logo || channel?.tvgLogo || '');
 
 const LazyImage = ({ src, alt, className, onError }) => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -777,7 +780,7 @@ const ChannelCard = React.memo(({ channel, onSelect }) => {
         <div className="w-3/5 h-3/5">
           {!imgError && (channel.logo || channel.tvgLogo) ? (
             <img
-              src={channel.logo || channel.tvgLogo}
+              src={resolveChannelLogo(channel)}
               alt={channel.name}
               className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
@@ -822,7 +825,7 @@ const ChannelListItem = React.memo(({ channel, onSelect }) => {
         <div className="w-9 h-9">
           {!imgError && (channel.logo || channel.tvgLogo) ? (
             <img
-              src={channel.logo || channel.tvgLogo}
+              src={resolveChannelLogo(channel)}
               alt={channel.name}
               className="w-full h-full object-contain"
               loading="lazy"

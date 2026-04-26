@@ -27,6 +27,18 @@
 
 > The project was designed to be "Edge-First," running natively on an AWS EC2 instance for high performance. However, you may experience delays depending on your playlist or its format.
 
+## Local Development (HTTP + HTTPS)
+
+```bash
+# HTTP (default)
+npm run dev
+
+# HTTPS local (self-signed certificate)
+npm run dev:https
+```
+
+For HTTPS mode, Vite runs with a local self-signed certificate to simulate secure environments in development.
+
 ## Goals & Donate
 
 ![Progress](./goals-progress.svg)

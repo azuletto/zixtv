@@ -1,10 +1,57 @@
 const http = require('http');
 const https = require('https');
+const dns = require('dns');
 const { URL } = require('url');
 const { pipeline } = require('stream');
 
-const HTTP_AGENT = new http.Agent({ keepAlive: true, keepAliveMsecs: 5000, maxSockets: 64 });
-const HTTPS_AGENT = new https.Agent({ keepAlive: true, keepAliveMsecs: 5000, maxSockets: 64 });
+if (typeof dns.setDefaultResultOrder === 'function') {
+  dns.setDefaultResultOrder('ipv4first');
+}
+
+const HTTP_AGENT = new http.Agent({ keepAlive: true, keepAliveMsecs: 10000, maxSockets: 128, maxFreeSockets: 64 });
+const HTTPS_AGENT = new https.Agent({ keepAlive: true, keepAliveMsecs: 10000, maxSockets: 128, maxFreeSockets: 64 });
+
+const parsePositiveInt = (value, fallback) => {
+  const parsed = Number.parseInt(String(value || ''), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const CONNECT_TIMEOUT_MS = parsePositiveInt(process.env.PROXY_CONNECT_TIMEOUT_MS, 45000);
+const FIRST_BYTE_TIMEOUT_MS = parsePositiveInt(process.env.PROXY_FIRST_BYTE_TIMEOUT_MS, 20000);
+const SOCKET_IDLE_TIMEOUT_MS = parsePositiveInt(process.env.PROXY_SOCKET_IDLE_TIMEOUT_MS, 120000);
+const STREAM_IDLE_TIMEOUT_MS = parsePositiveInt(process.env.PROXY_STREAM_IDLE_TIMEOUT_MS, 180000);
+const MAX_RETRIES = parsePositiveInt(process.env.PROXY_MAX_RETRIES, 1);
+const RETRY_DELAY_MS = parsePositiveInt(process.env.PROXY_RETRY_DELAY_MS, 400);
+
+const RETRYABLE_CODES = new Set(['ECONNRESET', 'ECONNREFUSED', 'EHOSTUNREACH', 'ENETUNREACH']);
+const NETWORK_CODES = new Set(['ETIMEDOUT', 'ECONNREFUSED', 'EHOSTUNREACH', 'ENETUNREACH', 'ENOTFOUND', 'ECONNRESET']);
+
+const HEADER_PROFILES = [
+  {
+    name: 'vlc',
+    headers: {
+      'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
+      Accept: '*/*',
+      Connection: 'close'
+    }
+  },
+  {
+    name: 'browser',
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      Accept: 'video/*,application/vnd.apple.mpegurl,application/x-mpegURL,*/*;q=0.9',
+      Connection: 'close'
+    }
+  },
+  {
+    name: 'minimal',
+    headers: {
+      'User-Agent': 'Mozilla/5.0',
+      Accept: '*/*',
+      Connection: 'close'
+    }
+  }
+];
 
 const passthroughHeaders = [
   'content-type',
@@ -12,184 +59,333 @@ const passthroughHeaders = [
   'content-disposition',
   'content-language',
   'content-length',
+  'content-range',
   'last-modified',
   'etag',
   'accept-ranges',
   'vary'
 ];
 
-const buildResponseHeaders = (fetchHeaders) => {
-  const responseHeaders = {
+const browserHeaderNames = [
+  'user-agent',
+  'accept',
+  'accept-language',
+  'accept-encoding',
+  'cache-control',
+  'pragma',
+  'referer',
+  'origin',
+  'sec-ch-ua',
+  'sec-ch-ua-mobile',
+  'sec-ch-ua-platform',
+  'sec-fetch-dest',
+  'sec-fetch-mode',
+  'sec-fetch-site',
+  'sec-fetch-user'
+];
+
+const sanitizeHeaderValue = (value) => {
+  if (value === null || value === undefined) return '';
+  const str = Array.isArray(value) ? value.join(', ') : String(value);
+  return str.replace(/[\r\n\0]/g, '').trim().slice(0, 8192);
+};
+
+const lookupIPv4 = (hostname, options, callback) => {
+  return dns.lookup(hostname, {
+    ...(options || {}),
+    family: 4,
+    all: false
+  }, callback);
+};
+
+const isClientAbort = (err) => {
+  const message = String(err?.message || '').toLowerCase();
+  return err?.code === 'ERR_CLIENT_ABORTED' || message.includes('client aborted request') || message.includes('aborted by client');
+};
+
+const isTimeoutError = (err) => {
+  const message = String(err?.message || '').toLowerCase();
+  return err?.code === 'ETIMEDOUT' || message.includes('timeout') || message.includes('timed out');
+};
+
+const buildResponseHeaders = (upstreamRes) => {
+  const headers = {
     'Access-Control-Allow-Origin': '*',
     'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-    'Pragma': 'no-cache',
-    'Expires': '0',
+    Pragma: 'no-cache',
+    Expires: '0',
     'X-Content-Type-Options': 'nosniff',
     'X-Accel-Buffering': 'no'
   };
 
-  // O fetch.headers é um iterável, precisamos extrair assim:
-  const cacheControl = fetchHeaders.get('cache-control');
-  responseHeaders['Cache-Control'] = cacheControl || 'no-cache';
-
-  for (const headerName of passthroughHeaders) {
-    const headerValue = fetchHeaders.get(headerName);
-    if (headerValue) {
-      responseHeaders[headerName] = headerValue;
+  for (const name of passthroughHeaders) {
+    const value = sanitizeHeaderValue(upstreamRes.headers[name]);
+    if (value) {
+      headers[name] = value;
     }
   }
 
-  if (!responseHeaders['content-type']) {
-    responseHeaders['content-type'] = 'application/octet-stream';
+  if (!headers['content-type']) {
+    headers['content-type'] = 'application/octet-stream';
   }
 
-  if (String(responseHeaders['content-type']).includes('video/') || String(responseHeaders['content-type']).includes('mpegurl') || String(responseHeaders['content-type']).includes('mp2t')) {
-    responseHeaders['Cache-Control'] = 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+  if (headers['content-length']) {
+    const length = Number.parseInt(headers['content-length'], 10);
+    if (!Number.isFinite(length) || length < 0) {
+      delete headers['content-length'];
+    }
   }
 
-  return responseHeaders;
-};
-
-const isLiveTransport = (targetUrl, req) => {
-  const pathname = targetUrl.pathname.toLowerCase();
-  const search = targetUrl.search.toLowerCase();
-  return (
-    pathname.endsWith('.ts') ||
-    pathname.endsWith('.m3u8') ||
-    search.includes('output=ts') ||
-    search.includes('type=m3u_plus') ||
-    search.includes('live/')
-  );
-};
-
-const buildUpstreamHeaders = (req, targetUrl) => {
-  const liveTransport = isLiveTransport(targetUrl, req);
-  const headers = {
-    'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept': req.headers.accept || '*/*',
-    'Accept-Language': req.headers['accept-language'] || 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-    'Cache-Control': 'no-cache',
-    'Pragma': 'no-cache',
-    'Connection': 'keep-alive',
-    'Host': targetUrl.host,
-    'Origin': req.headers.origin || `${targetUrl.protocol}//${targetUrl.host}`,
-    'Referer': req.headers.referer || `${targetUrl.protocol}//${targetUrl.host}/`
-  };
-
-  if (req.headers.range) {
-    headers.Range = req.headers.range;
-  }
-
-  if (liveTransport) {
-    headers['Accept-Encoding'] = 'identity';
-  } else if (req.headers['accept-encoding']) {
-    headers['Accept-Encoding'] = req.headers['accept-encoding'];
-  }
-
-  if (req.headers.cookie) {
-    headers.Cookie = req.headers.cookie;
+  if (!headers['accept-ranges']) {
+    headers['accept-ranges'] = 'bytes';
   }
 
   return headers;
 };
 
-const requestUpstream = (targetUrl, req, res, redirectsLeft = 2) => {
+const buildUpstreamHeaders = (req, targetUrl, profile = HEADER_PROFILES[0]) => {
+  const headers = {
+    Host: targetUrl.host,
+    ...profile.headers
+  };
+
+  for (const headerName of browserHeaderNames) {
+    const value = sanitizeHeaderValue(req.headers[headerName]);
+    if (!value) continue;
+
+    const normalizedName = headerName
+      .split('-')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join('-');
+
+    headers[normalizedName] = value;
+  }
+
+  if (req.headers.range) headers.Range = req.headers.range;
+  if (req.headers.cookie) headers.Cookie = req.headers.cookie;
+  if (!headers['Accept-Encoding']) headers['Accept-Encoding'] = 'identity';
+
+  return headers;
+};
+
+const requestUpstream = (targetUrl, req, res, context, redirectsLeft = 3, attempt = 0, profileIndex = 0) => {
   return new Promise((resolve, reject) => {
+    if (context.aborted || req.aborted) {
+      const err = new Error('Client aborted request');
+      err.code = 'ERR_CLIENT_ABORTED';
+      reject(err);
+      return;
+    }
+
     const transport = targetUrl.protocol === 'https:' ? https : http;
-    const headers = buildUpstreamHeaders(req, targetUrl);
+    const isHttps = targetUrl.protocol === 'https:';
+    const port = targetUrl.port || (isHttps ? 443 : 80);
+    const requestId = context.id;
+
     const options = {
       protocol: targetUrl.protocol,
       hostname: targetUrl.hostname,
-      port: targetUrl.port || (targetUrl.protocol === 'https:' ? 443 : 80),
-      path: `${targetUrl.pathname}${targetUrl.search}`,
+      port,
       method: 'GET',
-      headers,
-      agent: targetUrl.protocol === 'https:' ? HTTPS_AGENT : HTTP_AGENT,
-      timeout: 15000
+      path: `${targetUrl.pathname}${targetUrl.search}`,
+      headers: buildUpstreamHeaders(req, targetUrl, HEADER_PROFILES[profileIndex] || HEADER_PROFILES[0]),
+      agent: isHttps ? HTTPS_AGENT : HTTP_AGENT,
+      family: 4,
+      lookup: lookupIPv4,
+      servername: isHttps ? targetUrl.hostname : undefined,
+      ALPNProtocols: isHttps ? ['http/1.1'] : undefined,
+      rejectUnauthorized: process.env.PROXY_TLS_INSECURE === 'true' ? false : undefined
     };
 
-    const rangeHeader = req.headers.range;
-    if (rangeHeader) {
-      console.log(`[PROXY RANGE] ${rangeHeader} => ${targetUrl.toString()}`);
-    }
+    const startedAt = Date.now();
+    const isRange = Boolean(req.headers.range);
+
+    let settled = false;
+    let connectTimer = null;
+    let firstByteTimer = null;
+    let streamIdleTimer = null;
+
+    const cleanup = () => {
+      if (connectTimer) clearTimeout(connectTimer);
+      if (firstByteTimer) clearTimeout(firstByteTimer);
+      if (streamIdleTimer) clearTimeout(streamIdleTimer);
+      connectTimer = null;
+      firstByteTimer = null;
+      streamIdleTimer = null;
+    };
+
+    const doneResolve = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve();
+    };
+
+    const doneReject = (err) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(err);
+    };
+
+    const profileName = HEADER_PROFILES[profileIndex]?.name || 'default';
+    console.log(`${requestId} [PROXY] CONNECT ${targetUrl.hostname}:${port} attempt=${attempt + 1}/${MAX_RETRIES + 1} profile=${profileName}${isRange ? ' range' : ''}`);
 
     const upstreamReq = transport.request(options, (upstreamRes) => {
+      if (firstByteTimer) clearTimeout(firstByteTimer);
+
       const statusCode = upstreamRes.statusCode || 500;
+      const elapsed = Date.now() - startedAt;
+      console.log(`${requestId} [PROXY] RESPONSE ${statusCode} in=${elapsed}ms`);
 
       if (statusCode >= 300 && statusCode < 400 && upstreamRes.headers.location && redirectsLeft > 0) {
         upstreamRes.resume();
         const redirectedUrl = new URL(upstreamRes.headers.location, targetUrl.toString());
-        requestUpstream(redirectedUrl, req, res, redirectsLeft - 1).then(resolve).catch(reject);
+        console.log(`${requestId} [PROXY] REDIRECT -> ${redirectedUrl.toString()}`);
+        requestUpstream(redirectedUrl, req, res, context, redirectsLeft - 1, attempt, profileIndex).then(doneResolve).catch(doneReject);
         return;
       }
 
-      const responseHeaders = {
-        ...buildResponseHeaders({
-          get: (headerName) => upstreamRes.headers[String(headerName).toLowerCase()]
-        })
+      let headers;
+      try {
+        headers = buildResponseHeaders(upstreamRes);
+      } catch (error) {
+        doneReject(new Error(`Failed to build headers: ${error.message}`));
+        upstreamRes.destroy();
+        upstreamReq.destroy();
+        return;
+      }
+
+      try {
+        res.writeHead(statusCode, headers);
+      } catch (error) {
+        doneReject(new Error(`Failed to write headers: ${error.message}`));
+        upstreamRes.destroy();
+        upstreamReq.destroy();
+        return;
+      }
+
+      const armStreamIdle = () => {
+        if (streamIdleTimer) clearTimeout(streamIdleTimer);
+        streamIdleTimer = setTimeout(() => {
+          const timeoutErr = new Error('Upstream stream idle timeout');
+          timeoutErr.code = 'ETIMEDOUT';
+          upstreamReq.destroy(timeoutErr);
+        }, STREAM_IDLE_TIMEOUT_MS);
       };
 
-      const passthroughHeaders = [
-        'content-type',
-        'content-length',
-        'content-range',
-        'accept-ranges',
-        'content-encoding',
-        'last-modified',
-        'etag',
-        'vary',
-        'content-disposition'
-      ];
+      armStreamIdle();
+      upstreamRes.on('data', armStreamIdle);
 
-      for (const headerName of passthroughHeaders) {
-        const headerValue = upstreamRes.headers[headerName];
-        if (headerValue) {
-          responseHeaders[headerName] = headerValue;
-        }
-      }
-
-      if (!responseHeaders['content-type']) {
-        responseHeaders['content-type'] = 'application/octet-stream';
-      }
-
-      responseHeaders['accept-ranges'] = 'bytes';
-
-      if (statusCode === 206 && rangeHeader) {
-        console.log(`[PROXY RANGE OK] Status 206, Range: ${rangeHeader}, Content-Range: ${upstreamRes.headers['content-range']}`);
-      }
-
-      res.writeHead(statusCode, responseHeaders);
+      upstreamRes.on('error', (error) => {
+        doneReject(error);
+      });
 
       if (statusCode === 204 || statusCode === 304) {
         res.end();
-        resolve();
+        doneResolve();
         return;
       }
 
-      pipeline(upstreamRes, res, (err) => {
-        if (err && !res.writableEnded) {
-          reject(err);
+      pipeline(upstreamRes, res, (error) => {
+        if (error) {
+          if (context.aborted || req.aborted || isClientAbort(error)) {
+            const abortErr = new Error('Client aborted request');
+            abortErr.code = 'ERR_CLIENT_ABORTED';
+            doneReject(abortErr);
+            return;
+          }
+          doneReject(error);
           return;
         }
-        resolve();
+
+        doneResolve();
       });
     });
 
-    upstreamReq.on('timeout', () => {
-      upstreamReq.destroy(new Error('Upstream proxy timeout'));
+    connectTimer = setTimeout(() => {
+      const timeoutErr = new Error('Upstream connect timeout');
+      timeoutErr.code = 'ETIMEDOUT';
+      upstreamReq.destroy(timeoutErr);
+    }, CONNECT_TIMEOUT_MS);
+
+    upstreamReq.on('socket', (socket) => {
+      socket.setTimeout(SOCKET_IDLE_TIMEOUT_MS, () => {
+        const timeoutErr = new Error('Upstream socket idle timeout');
+        timeoutErr.code = 'ETIMEDOUT';
+        upstreamReq.destroy(timeoutErr);
+      });
+
+      const onConnected = () => {
+        if (connectTimer) clearTimeout(connectTimer);
+        firstByteTimer = setTimeout(() => {
+          const timeoutErr = new Error('Upstream first byte timeout');
+          timeoutErr.code = 'ETIMEDOUT';
+          upstreamReq.destroy(timeoutErr);
+        }, FIRST_BYTE_TIMEOUT_MS);
+      };
+
+      if (socket.connecting) {
+        if (isHttps) {
+          socket.once('secureConnect', onConnected);
+        } else {
+          socket.once('connect', onConnected);
+        }
+      } else {
+        onConnected();
+      }
     });
 
-    upstreamReq.on('error', reject);
+    upstreamReq.on('error', (error) => {
+      if (context.aborted || req.aborted || isClientAbort(error)) {
+        const abortErr = new Error('Client aborted request');
+        abortErr.code = 'ERR_CLIENT_ABORTED';
+        doneReject(abortErr);
+        return;
+      }
 
-    req.on('aborted', () => {
-      upstreamReq.destroy(new Error('Client aborted request'));
+      const shouldRotateProfile = profileIndex < HEADER_PROFILES.length - 1 && !context.aborted && !req.aborted;
+      const canRetry = RETRYABLE_CODES.has(error.code) && attempt < MAX_RETRIES && !isRange && !isTimeoutError(error);
+      const shouldRetry = canRetry || shouldRotateProfile;
+      console.error(`${requestId} [PROXY] ERROR code=${error.code || 'unknown'} message=${error.message} retry=${shouldRetry} profile=${HEADER_PROFILES[profileIndex]?.name || 'default'}`);
+
+      if (shouldRetry) {
+        const delay = RETRY_DELAY_MS * Math.pow(2, attempt);
+        const nextProfileIndex = shouldRotateProfile ? profileIndex + 1 : profileIndex;
+        setTimeout(() => {
+          if (context.aborted || req.aborted) {
+            const abortErr = new Error('Client aborted request');
+            abortErr.code = 'ERR_CLIENT_ABORTED';
+            doneReject(abortErr);
+            return;
+          }
+
+          requestUpstream(targetUrl, req, res, context, redirectsLeft, canRetry ? attempt + 1 : attempt, nextProfileIndex).then(doneResolve).catch(doneReject);
+        }, delay);
+        return;
+      }
+
+      doneReject(error);
     });
 
-    upstreamReq.end();
+    try {
+      upstreamReq.end();
+    } catch (error) {
+      doneReject(new Error(`Failed to send upstream request: ${error.message}`));
+    }
   });
 };
 
 const handleProxy = async (req, res) => {
+  const startedAt = Date.now();
+  const requestId = `[${startedAt}]`;
+  const context = { id: requestId, aborted: false };
+
+  req.once('aborted', () => {
+    context.aborted = true;
+    console.warn(`${requestId} [PROXY] CLIENT_ABORT`);
+  });
+
   const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
   const urlParam = parsedUrl.searchParams.get('url');
 
@@ -212,27 +408,52 @@ const handleProxy = async (req, res) => {
   let targetUrl;
   try {
     targetUrl = new URL(urlParam);
-  } catch (error) {
+  } catch (_error) {
     res.statusCode = 400;
     res.end('Invalid URL');
     return;
   }
 
+  if (!['http:', 'https:'].includes(targetUrl.protocol)) {
+    res.statusCode = 400;
+    res.end('Unsupported protocol');
+    return;
+  }
+
   const rangeHeader = req.headers.range;
-  console.log(`[PROXY FETCH] ${targetUrl.toString()}${rangeHeader ? ` (Range: ${rangeHeader})` : ''}`);
+  console.log(`${requestId} [PROXY] START ${req.method} ${targetUrl.toString()}${rangeHeader ? ` (Range: ${rangeHeader})` : ''}`);
 
   try {
-    await requestUpstream(targetUrl, req, res);
+    await requestUpstream(targetUrl, req, res, context);
+    console.log(`${requestId} [PROXY] COMPLETE in=${Date.now() - startedAt}ms`);
+  } catch (error) {
+    const elapsed = Date.now() - startedAt;
 
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      console.log('[PROXY FETCH] Requisição abortada pelo cliente.');
-    } else {
-      console.error(`[PROXY FETCH] Erro na requisição (${targetUrl.hostname}): ${err.message} [${err.code || 'unknown'}]`);
-      if (!res.headersSent) {
-        res.statusCode = 500;
-        res.end(`Proxy Error: ${err.message}`);
+    if (context.aborted || req.aborted || isClientAbort(error)) {
+      console.warn(`${requestId} [PROXY] ABORTED in=${elapsed}ms`);
+      if (!res.writableEnded) {
+        res.destroy();
       }
+      return;
+    }
+
+    const statusCode = isTimeoutError(error)
+      ? 504
+      : NETWORK_CODES.has(error.code)
+        ? 502
+        : 500;
+
+    console.error(`${requestId} [PROXY] FAIL status=${statusCode} in=${elapsed}ms code=${error.code || 'unknown'} message=${error.message}`);
+
+    if (!res.headersSent) {
+      res.statusCode = statusCode;
+      res.setHeader('Content-Type', 'text/plain');
+      res.end(`Proxy Error (${elapsed}ms): ${error.message}`);
+      return;
+    }
+
+    if (!res.writableEnded) {
+      res.end();
     }
   }
 };

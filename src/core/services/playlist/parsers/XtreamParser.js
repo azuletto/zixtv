@@ -1,8 +1,49 @@
 import { resolvePlaylistSource } from '../../network/proxy';
 
 export class XtreamParser {
+  resolveStreamBaseUrl(baseUrl, userInfo = {}) {
+    const normalizedBase = String(baseUrl || '').trim().replace(/\/$/, '');
+    if (!normalizedBase) return normalizedBase;
+
+    let baseParsed;
+    try {
+      baseParsed = new URL(normalizedBase);
+    } catch (_error) {
+      return normalizedBase;
+    }
+
+    const serverInfo = userInfo?.server_info || {};
+    const serverUrlRaw = String(serverInfo.url || '').trim();
+    const serverProtocolRaw = String(serverInfo.server_protocol || '').trim().toLowerCase();
+
+    // Never force HTTPS here. Prefer protocol announced by provider, else keep original.
+    const protocol = serverProtocolRaw === 'http' || serverProtocolRaw === 'https'
+      ? `${serverProtocolRaw}:`
+      : baseParsed.protocol;
+
+    let host = baseParsed.hostname;
+    if (serverUrlRaw) {
+      try {
+        const parsedServerUrl = new URL(serverUrlRaw);
+        host = parsedServerUrl.hostname || host;
+      } catch (_error) {
+        host = serverUrlRaw.replace(/^https?:\/\//i, '').split('/')[0].split(':')[0] || host;
+      }
+    }
+
+    const defaultPort = protocol === 'https:' ? '443' : '80';
+    const originalPort = baseParsed.port || defaultPort;
+    const portFromServer = protocol === 'https:'
+      ? String(serverInfo.https_port || serverInfo.port || '').trim()
+      : String(serverInfo.port || '').trim();
+    const port = portFromServer || originalPort;
+
+    const resolved = `${protocol}//${host}${port ? `:${port}` : ''}`;
+    return resolved.replace(/\/$/, '');
+  }
+
   async fetchJsonDirect(targetUrl, requestOptions = {}) {
-    const response = await fetch(resolvePlaylistSource(targetUrl), {
+    const response = await fetch(resolvePlaylistSource(targetUrl, { forceProxy: true }), {
       method: 'GET',
       cache: 'no-store',
       signal: requestOptions.signal
@@ -48,6 +89,8 @@ export class XtreamParser {
       const userInfo = await this.fetchUserInfo(baseUrl, username, password, requestOptions);
       
       
+      const streamBaseUrl = this.resolveStreamBaseUrl(baseUrl, userInfo);
+
       const liveStreams = await this.fetchLiveStreams(baseUrl, username, password, requestOptions);
       
       
@@ -60,9 +103,9 @@ export class XtreamParser {
         type: 'xtream',
         user: userInfo,
         items: [
-          ...this.parseLiveStreams(liveStreams, baseUrl, username, password),
-          ...this.parseVodStreams(vodStreams, baseUrl, username, password),
-          ...this.parseSeries(series, baseUrl, username, password)
+          ...this.parseLiveStreams(liveStreams, streamBaseUrl, username, password),
+          ...this.parseVodStreams(vodStreams, streamBaseUrl, username, password),
+          ...this.parseSeries(series, streamBaseUrl, username, password)
         ]
       };
     } catch (error) {

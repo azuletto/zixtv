@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import EpisodeList from './EpisodeList';
 import CustomPlayer from '../player/CustomPlayer';
 import { tmdbService } from '../../core/services/tmdb/TMDBService';
+import { resolveMediaUrl } from '../../core/services/network/proxy';
 const normalizeDescription = (value, fallback = 'Descrição não disponível') => {
   const raw = String(value || '').trim();
   if (!raw) return fallback;
@@ -134,7 +135,7 @@ const SeriesDetails = ({ series }) => {
       <div className="relative h-[55vh] md:h-[65vh] overflow-hidden isolate">
         <div className="absolute inset-0 overflow-hidden">
           <img
-            src={series?.tvg?.logo || series?.logo || tmdbData?.backdropUrl || series?.metadata?.backdrop || '/default-banner.jpg'}
+            src={resolveMediaUrl(series?.tvg?.logo || series?.logo || tmdbData?.backdropUrl || series?.metadata?.backdrop || '/default-banner.jpg')}
             alt={seriesName}
             className="absolute inset-0 h-full w-full scale-110 object-cover"
             style={{ filter: 'blur(4px) saturate(1.05) brightness(1)' }}

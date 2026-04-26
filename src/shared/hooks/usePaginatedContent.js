@@ -28,13 +28,13 @@ export const usePaginatedContent = (items, itemsPerPage = 48) => {
 
   const indexedItems = useMemo(() => {
     return items.map((item) => {
-      const rawCategory = item.categoryDisplay || item.groupTitle || item.metadata?.genre || item.category || '';
+      const rawCategory = item.categoryDisplay || item.groupTitle || item.group || item.originalGroup || item.metadata?.genre || item.category || 'Sem categoria';
       return {
         item,
         searchName: normalizeText(item.name || item.title || ''),
         categoryRaw: rawCategory,
         categoryNormalized: normalizeText(rawCategory),
-        categoryDisplay: rawCategory ? capitalizeWords(rawCategory) : 'Outros'
+        categoryDisplay: rawCategory ? capitalizeWords(rawCategory) : 'Sem categoria'
       };
     });
   }, [items]);
@@ -44,8 +44,9 @@ export const usePaginatedContent = (items, itemsPerPage = 48) => {
     const categoryMap = new Map(); 
 
     indexedItems.forEach(({ categoryRaw, categoryNormalized, categoryDisplay }) => {
-      if (categoryRaw && !categoryMap.has(categoryNormalized)) {
-        categoryMap.set(categoryNormalized, {
+      const categoryKey = categoryDisplay || 'Sem categoria';
+      if (!categoryMap.has(categoryKey)) {
+        categoryMap.set(categoryKey, {
           original: categoryRaw,
           display: categoryDisplay,
           normalized: categoryNormalized
@@ -85,16 +86,16 @@ export const usePaginatedContent = (items, itemsPerPage = 48) => {
     const groups = new Map();
 
     filteredIndexedItems.forEach(({ item, categoryNormalized, categoryDisplay }) => {
-      const normalized = categoryNormalized || 'outros';
-      const displayName = categoryDisplay || 'Outros';
+      const displayName = categoryDisplay || 'Sem categoria';
+      const groupKey = displayName;
 
-      if (!groups.has(normalized)) {
-        groups.set(normalized, {
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, {
           name: displayName,
           items: []
         });
       }
-      groups.get(normalized).items.push(item);
+      groups.get(groupKey).items.push(item);
     });
 
     return Array.from(groups.values())

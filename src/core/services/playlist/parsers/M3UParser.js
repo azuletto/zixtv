@@ -2,7 +2,7 @@
 
 export class M3UParser {
   async fetchM3UContent(source, requestOptions = {}) {
-    const proxiedSource = resolvePlaylistSource(source);
+    const proxiedSource = resolvePlaylistSource(source, { forceProxy: true });
     const response = await fetch(proxiedSource, {
       method: 'GET',
       cache: 'no-store',

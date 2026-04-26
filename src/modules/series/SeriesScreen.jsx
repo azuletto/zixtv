@@ -17,23 +17,9 @@ const cleanTitle = (title) => {
   return match ? match[1].trim() : title;
 };
 
-const normalizeText = (text) => {
-  if (!text) return '';
-  return text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s]/g, '');
-};
-
-const normalizeSeriesCategory = (rawCategory) => {
-  if (!rawCategory) return 'Series';
-  const normalized = normalizeText(rawCategory);
-  if (normalized.includes('anime')) return 'Anime';
-  if (normalized.includes('documentario')) return 'Documentario';
-  if (normalized.includes('infantil')) return 'Infantil';
-  return rawCategory.length > 28 ? `${rawCategory.slice(0, 28)}...` : rawCategory;
+const resolveCategoryLabel = (value = '') => {
+  const trimmed = String(value || '').trim();
+  return trimmed || 'Sem categoria';
 };
 
 const SeriesScreen = () => {
@@ -48,17 +34,17 @@ const SeriesScreen = () => {
 
   const seriesWithCategories = useMemo(() => {
     const result = [];
-    const len = Math.min(allSeries.length, 5000);
+    const len = allSeries.length;
 
     for (let i = 0; i < len; i++) {
       const item = allSeries[i];
-      const rawCategory = item.groupTitle || item.group || item.metadata?.genre || 'Series';
+      const rawCategory = item.groupTitle || item.group || item.originalGroup || item.metadata?.genre;
 
       result.push({
         ...item,
         name: cleanTitle(item.name || item.title || item.seriesName || ''),
         title: cleanTitle(item.title || item.name || item.seriesName || ''),
-        categoryDisplay: normalizeSeriesCategory(rawCategory)
+        categoryDisplay: resolveCategoryLabel(rawCategory)
       });
     }
 
