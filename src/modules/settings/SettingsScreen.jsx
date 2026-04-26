@@ -178,7 +178,14 @@ const SettingsScreen = () => {
 
   const loadSettings = async () => {
     const saved = await storageService.getSettings();
-    const nextSettings = { ...saved, theme: 'dark' };
+    const normalizedVolume = Number.isFinite(Number(saved?.volume))
+      ? Math.max(0, Math.min(1, Number(saved.volume)))
+      : 1;
+    const nextSettings = {
+      ...saved,
+      theme: 'dark',
+      volume: normalizedVolume
+    };
     setSettings(prev => ({ ...prev, ...nextSettings }));
 
     if (saved?.theme !== 'dark') {
@@ -398,7 +405,7 @@ const SettingsScreen = () => {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-300 text-sm flex items-center">Volume padrão <ComingSoonHint /></span>
+                  <span className="text-zinc-300 text-sm flex items-center">Volume padrão</span>
                   <div className="flex items-center gap-3">
                     <VolumeUpIcon className="w-4 h-4 text-zinc-500" />
                     <input
@@ -407,9 +414,8 @@ const SettingsScreen = () => {
                       max="1"
                       step="0.1"
                       value={settings.volume}
-                      disabled
                       onChange={(e) => saveSettings('volume', parseFloat(e.target.value))}
-                      className="w-28 h-1 bg-zinc-800 rounded-lg appearance-none cursor-not-allowed accent-red-600"
+                      className="w-28 h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-red-600"
                     />
                     <span className="text-white text-sm w-10">{Math.round(settings.volume * 100)}%</span>
                   </div>
@@ -560,7 +566,7 @@ const SettingsScreen = () => {
               <h2 className="text-lg font-semibold text-white mb-2">ZixTV</h2>
               <p className="text-zinc-500 text-sm">v1.0.0 Alpha</p>
               <p className="text-zinc-500 text-sm mt-2">
-                Um organizador e player IPTV completo com interface moderna. Futuras atualizações em breve!
+                Um organizador e player IPTV completo com interface moderna.
               </p>
               <p className="text-zinc-600 text-xs mt-4">
                 © 2026 - Todos os direitos reservados

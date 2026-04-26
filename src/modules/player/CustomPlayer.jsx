@@ -85,6 +85,7 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
+  const [defaultVolume, setDefaultVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [bufferProfile, setBufferProfile] = useState(() => localStorage.getItem('zix.bufferProfile') || 'balanced');
@@ -250,7 +251,7 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
   useEffect(() => {
     let active = true;
 
-    const loadBufferProfile = async () => {
+    const loadPlayerSettings = async () => {
       try {
         const saved = await storageService.getSettings();
         if (!active) return;
@@ -258,16 +259,31 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
         if (saved?.bufferProfile && BUFFER_PROFILES[saved.bufferProfile]) {
           setBufferProfile(saved.bufferProfile);
         }
+
+        if (Number.isFinite(Number(saved?.volume))) {
+          const nextVolume = Math.max(0, Math.min(1, Number(saved.volume)));
+          setDefaultVolume(nextVolume);
+          setVolume(nextVolume);
+          setIsMuted(nextVolume === 0);
+        }
       } catch (error) {
       }
     };
 
-    loadBufferProfile();
+    loadPlayerSettings();
 
     return () => {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.volume = Math.max(0, Math.min(1, Number(volume) || 0));
+    video.muted = Boolean(isMuted || volume === 0);
+  }, [volume, isMuted]);
 
   
   useEffect(() => {
@@ -282,6 +298,8 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
+    setVolume(defaultVolume);
+    setIsMuted(defaultVolume === 0);
     autoplayRequestedRef.current = true;
     pendingLiveResumeRef.current = false;
     recoveryRef.current = { attempts: 0, lastAttemptAt: 0, suggested: recoveryRef.current.suggested };
@@ -308,6 +326,8 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
     video.playsInline = true;
     video.crossOrigin = 'anonymous';
     video.controlsList = 'nodownload';
+    video.volume = defaultVolume;
+    video.muted = defaultVolume === 0;
 
     const isDirectFile = !isHlsSource && !isLiveContent && (
       source.endsWith('.mp4') ||
@@ -467,7 +487,7 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
         mpegtsRef.current = null;
       }
     };
-  }, [source, isLiveContent, bufferProfile, getBufferProfileConfig, clearWaitingTimer, recoverLivePlayback]);
+  }, [source, isLiveContent, bufferProfile, defaultVolume, getBufferProfileConfig, clearWaitingTimer, recoverLivePlayback]);
 
   
   useEffect(() => {
@@ -616,11 +636,12 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
   }, [isLiveContent]);
 
   const handleVolumeChange = useCallback((newVolume) => {
+    const safeVolume = Math.max(0, Math.min(1, Number(newVolume) || 0));
     if (videoRef.current) {
-      videoRef.current.volume = newVolume;
+      videoRef.current.volume = safeVolume;
     }
-    setVolume(newVolume);
-    setIsMuted(newVolume === 0);
+    setVolume(safeVolume);
+    setIsMuted(safeVolume === 0);
   }, []);
 
   const toggleMute = useCallback(() => {
