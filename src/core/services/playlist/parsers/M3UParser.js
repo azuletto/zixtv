@@ -3,6 +3,12 @@
 export class M3UParser {
   async fetchM3UContent(source, requestOptions = {}) {
     const proxiedSource = resolvePlaylistSource(source, { forceProxy: true });
+    console.log('[M3UParser] fetchM3UContent:', {
+      original: source,
+      proxied: proxiedSource,
+      isProxied: proxiedSource !== source
+    });
+
     const response = await fetch(proxiedSource, {
       method: 'GET',
       cache: 'no-store',
@@ -255,7 +261,29 @@ export class M3UParser {
         throw new Error('Playlist vazia');
       }
 
+      // Diagnóstico detalhado se falhar validação
       if (!this.isValidM3UContent(content)) {
+        const preview = content.substring(0, 500);
+        const isHtml = content.toLowerCase().includes('<!doctype html') || content.toLowerCase().includes('<html');
+        const isCloudflare = content.toLowerCase().includes('cloudflare');
+        const isEmpty = !content.trim();
+        
+        console.error('[M3UParser] Conteúdo inválido:', {
+          length: content.length,
+          isHtml,
+          isCloudflare,
+          isEmpty,
+          preview
+        });
+
+        if (isCloudflare) {
+          throw new Error('Servidor está bloqueando a requisição (Cloudflare). A URL pode estar bloqueando IPs da AWS. Tente usar um proxy diferente ou contatar o provedor.');
+        }
+        
+        if (isHtml) {
+          throw new Error('Servidor retornou HTML em vez de playlist M3U. Verifique se a URL está correta ou se o servidor requer autenticação/headers especiais.');
+        }
+
         throw new Error('A URL nao retornou uma playlist M3U valida');
       }
 
