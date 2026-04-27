@@ -54,12 +54,12 @@ For HTTPS mode, Vite runs with a local self-signed certificate to simulate secur
 | **⚙️ Settings** | Settings Screen | ✅ Done |
 | **⚙️ Settings** | Player Buffer Settings | ✅ Done |
 | **📺 Live** | EPG Load | ❌ Not Done |
-| **🎮 Player** | Better Player Settings | ❌ Not Done |
+| **🎮 Player** | Better Player Settings | 🚧 Working |
 | **🌐 General** | Language - English | ❌ Not Done |
 | **📺 Live** | Truncate to Change Quality | ❌ Not Done |
 | **🔒 General** | Parental Control | ❌ Not Done |
 | **🔒 General** | Playlist Custumization (Like, Add, Etc..) | ❌ Not Done |
-| **📜 General** | History | ❌ Not Done |
+| **📜 General** | History | ✅ Done |
 
 <br />
 
