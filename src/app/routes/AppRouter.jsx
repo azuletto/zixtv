@@ -11,6 +11,7 @@ import InMaintenance from '../../modules/maintenance/InMaintenanceScreen';
 const MoviesScreen = lazy(() => import('../../modules/movies/MoviesScreen'));
 const SeriesScreen = lazy(() => import('../../modules/series/SeriesScreen'));
 const LiveScreen = lazy(() => import('../../modules/live/LiveScreen'));
+const HistoryScreen = lazy(() => import('../../modules/history/HistoryScreen'));
 const SettingsScreen = lazy(() => import('../../modules/settings/SettingsScreen'));
 
 const RouterBootLoader = () => (
@@ -152,6 +153,7 @@ const AppRouter = () => {
             />
             <Route path="/movies" element={<MoviesScreen />} />
             <Route path="/series" element={<SeriesScreen />} />
+            <Route path="/history" element={<HistoryScreen />} />
             <Route path="/live" element={<LiveScreen />} />
             <Route path="/trending" element={<HomeScreen sidebarWidth={sidebarWidth} isSidebarCollapsed={isSidebarCollapsed} />} />
             <Route path="/settings" element={<SettingsScreen />} />

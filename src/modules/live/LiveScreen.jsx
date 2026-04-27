@@ -746,7 +746,13 @@ const LiveScreen = () => {
                   source={selectedChannel.url}
                   title={selectedChannel.name}
                   type="live"
-                  metadata={selectedChannel.metadata}
+                  metadata={{
+                    ...selectedChannel.metadata,
+                    title: selectedChannel.name,
+                    channelLogo: selectedChannel.logo || selectedChannel.tvgLogo || selectedChannel.metadata?.channelLogo || null,
+                    logo: selectedChannel.logo || selectedChannel.tvgLogo || null,
+                    tvgLogo: selectedChannel.tvgLogo || selectedChannel.logo || null
+                  }}
                   autoPlay={true}
                   onClose={handleClosePlayer}
                 />

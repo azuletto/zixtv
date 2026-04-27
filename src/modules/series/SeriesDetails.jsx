@@ -209,7 +209,13 @@ const SeriesDetails = ({ series }) => {
                 source={selectedEpisode.url}
                 title={`${series.name} - S${String(selectedEpisode.season).padStart(2, '0')}E${String(selectedEpisode.episode).padStart(2, '0')}`}
                 type="series"
-                metadata={selectedEpisode.metadata}
+                metadata={{
+                  ...selectedEpisode.metadata,
+                  title: selectedEpisode.name || selectedEpisode.title,
+                  poster: selectedEpisode.posterUrl || selectedEpisode.logo || selectedEpisode?.tvg?.logo || selectedEpisode.metadata?.poster,
+                  backdrop: selectedEpisode.backdropUrl || selectedEpisode.logo || selectedEpisode?.tvg?.logo || selectedEpisode.metadata?.backdrop,
+                  logo: selectedEpisode.logo || selectedEpisode?.tvg?.logo || null
+                }}
                 tmdbData={tmdbData}
                 seriesContext={{
                   episodes: orderedEpisodes,

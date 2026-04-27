@@ -15,7 +15,7 @@ import {
   FilmIcon,
   CollectionIcon,
   LightningBoltIcon,
-  PlayIcon,
+  HistoryIcon,
   GlobeAltIcon,
   FolderIcon,
   MenuIcon
@@ -203,6 +203,7 @@ const Sidebar = () => {
     { label: 'Ao Vivo', path: '/live', icon: LightningBoltIcon, solidIcon: LightningBoltSolidIcon },
     { label: 'Filmes', path: '/movies', icon: FilmIcon, solidIcon: FilmSolidIcon },
     { label: 'Séries', path: '/series', icon: CollectionIcon, solidIcon: CollectionSolidIcon },
+    { label: 'Histórico', path: '/history', icon: HistoryIcon, solidIcon: HistoryIcon },
   ], []);
 
   const bottomItems = useMemo(() => [

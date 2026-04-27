@@ -46,7 +46,8 @@ import {
   Settings,
   PlusCircle,
   Info,
-  ThumbsUp
+  ThumbsUp,
+  History
 } from 'lucide-react';
 
 export const UserIcon = User;
@@ -98,3 +99,4 @@ export const PlusCircleIcon = PlusCircle;
 export const InformationCircleIcon = Info;
 export const ThumbUpIcon = ThumbsUp;
 export const ArrowLeftIcon = ChevronLeft;
+export const HistoryIcon = History;

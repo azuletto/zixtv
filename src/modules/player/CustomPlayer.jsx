@@ -110,6 +110,7 @@ const CustomPlayer = ({
   tmdbData,
   onClose,
   startInCinema = false,
+  initialPosition = 0,
   seriesContext,
   movieContext
 }) => {
@@ -126,6 +127,8 @@ const CustomPlayer = ({
   const recoveryRef = useRef({ attempts: 0, lastAttemptAt: 0, suggested: false });
   const lastTimeUpdateRef = useRef(0);
   const stallRecoveryRef = useRef(null);
+  const lastPersistedPositionRef = useRef(-1);
+  const resumeAppliedRef = useRef(false);
   
   const [showControls, setShowControls] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -138,6 +141,7 @@ const CustomPlayer = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [bufferProfile, setBufferProfile] = useState(() => localStorage.getItem('zix.bufferProfile') || 'balanced');
   const [autoplayEnabled, setAutoplayEnabled] = useState(true);
+  const [rememberProgressEnabled, setRememberProgressEnabled] = useState(true);
   const [seriesPromptState, setSeriesPromptState] = useState(null);
   const [showMovieSuggestionPrompt, setShowMovieSuggestionPrompt] = useState(false);
   const [hasShownSeriesPrompt, setHasShownSeriesPrompt] = useState(false);
@@ -148,6 +152,7 @@ const CustomPlayer = ({
   const isLiveContent = type === 'live';
   const isSeriesContent = type === 'series';
   const isMovieContent = type === 'movie';
+  const resolvedSource = useMemo(() => resolveMediaUrl(source || ''), [source]);
 
   const seriesEpisodes = useMemo(() => {
     if (!Array.isArray(seriesContext?.episodes)) return [];
@@ -204,7 +209,79 @@ const CustomPlayer = ({
     setHasShownSeriesPrompt(false);
     setHasShownMoviePrompt(false);
     setHasTriggeredSeriesTransition(false);
+    lastPersistedPositionRef.current = -1;
+    resumeAppliedRef.current = false;
   }, [source, type, title]);
+
+  const persistPlaybackSnapshot = useCallback((force = false) => {
+    const video = videoRef.current;
+    if (!video || !resolvedSource) return;
+
+    const currentPosition = Number.isFinite(video.currentTime) ? Math.floor(video.currentTime) : 0;
+    const currentDuration = Number.isFinite(video.duration)
+      ? Math.floor(video.duration)
+      : (Number.isFinite(duration) ? Math.floor(duration) : 0);
+
+    if (!force && currentPosition > 0 && Math.abs(currentPosition - lastPersistedPositionRef.current) < 10) {
+      return;
+    }
+
+    if (currentPosition > 0) {
+      lastPersistedPositionRef.current = currentPosition;
+    }
+
+    const entryType = isSeriesContent
+      ? 'series'
+      : isMovieContent
+        ? 'movie'
+        : isLiveContent
+          ? 'live'
+          : String(type || 'media');
+
+    const rawThumbnail =
+      seriesContext?.currentEpisode?.posterUrl
+      || seriesContext?.currentEpisode?.backdropUrl
+      || metadata?.channelLogo
+      || metadata?.logo
+      || metadata?.tvgLogo
+      || metadata?.poster
+      || metadata?.backdrop
+      || null;
+
+    // Resolve thumbnail URL through proxy before saving
+    const thumbnail = rawThumbnail ? resolveMediaUrl(rawThumbnail) : null;
+
+    storageService.upsertWatchHistoryEntry({
+      type: entryType,
+      source: resolvedSource,
+      title: title || metadata?.title || 'Sem titulo',
+      position: currentPosition,
+      duration: currentDuration,
+      season: seriesContext?.currentEpisode?.season ?? null,
+      episode: seriesContext?.currentEpisode?.episode ?? null,
+      thumbnail
+    }).catch(() => {});
+
+    if (rememberProgressEnabled && (isSeriesContent || isMovieContent)) {
+      storageService.saveWatchProgress(resolvedSource, {
+        position: currentPosition,
+        duration: currentDuration,
+        type: entryType,
+        title: title || metadata?.title || 'Sem titulo'
+      }).catch(() => {});
+    }
+  }, [
+    duration,
+    isLiveContent,
+    isMovieContent,
+    isSeriesContent,
+    metadata,
+    rememberProgressEnabled,
+    resolvedSource,
+    seriesContext,
+    title,
+    type
+  ]);
 
   const playNextSeriesEpisode = useCallback(() => {
     if (!isSeriesContent || !nextSeriesEpisode || hasTriggeredSeriesTransition) return;
@@ -423,6 +500,7 @@ const CustomPlayer = ({
         }
 
         setAutoplayEnabled(saved?.autoplay ?? true);
+        setRememberProgressEnabled(saved?.rememberProgress ?? true);
       } catch (error) {
       }
     };
@@ -439,7 +517,6 @@ const CustomPlayer = ({
     const video = videoRef.current;
     if (!video || !source) return;
     const sourceLower = String(source).toLowerCase();
-    const resolvedSource = resolveMediaUrl(source);
     const bufferConfig = getBufferProfileConfig();
 
     setIsLoading(true);
@@ -632,7 +709,7 @@ const CustomPlayer = ({
         mpegtsRef.current = null;
       }
     };
-  }, [source, isLiveContent, bufferProfile, getBufferProfileConfig, clearWaitingTimer, recoverLivePlayback]);
+  }, [source, isLiveContent, bufferProfile, getBufferProfileConfig, clearWaitingTimer, recoverLivePlayback, resolvedSource]);
 
   
   useEffect(() => {
@@ -659,6 +736,37 @@ const CustomPlayer = ({
       setIsLoading(false);
       clearWaitingTimer();
 
+      if (!resumeAppliedRef.current) {
+        resumeAppliedRef.current = true;
+
+        if (Number(initialPosition) > 0 && !isLiveContent) {
+          const directStart = Number(initialPosition);
+          const maxResume = Number.isFinite(videoRef.current?.duration) && videoRef.current.duration > 10
+            ? Math.max(0, videoRef.current.duration - 5)
+            : directStart;
+          const resumeAt = Math.min(directStart, maxResume);
+
+          if (resumeAt > 0 && videoRef.current) {
+            videoRef.current.currentTime = resumeAt;
+            setCurrentTime(resumeAt);
+          }
+        } else if (rememberProgressEnabled && !isLiveContent && (isSeriesContent || isMovieContent) && resolvedSource) {
+          storageService.getWatchProgress(resolvedSource).then((savedProgress) => {
+            const savedPosition = Number(savedProgress?.position || 0);
+            if (!videoRef.current || savedPosition <= 0) return;
+
+            const videoDuration = Number.isFinite(videoRef.current.duration) ? videoRef.current.duration : Number(savedProgress?.duration || 0);
+            const maxResume = videoDuration > 10 ? Math.max(0, videoDuration - 5) : savedPosition;
+            const resumeAt = Math.min(savedPosition, maxResume);
+
+            if (resumeAt > 0) {
+              videoRef.current.currentTime = resumeAt;
+              setCurrentTime(resumeAt);
+            }
+          }).catch(() => {});
+        }
+      }
+
       if (autoplayRequestedRef.current && video.paused) {
         video.play().then(() => {
           autoplayRequestedRef.current = false;
@@ -676,10 +784,17 @@ const CustomPlayer = ({
       pendingLiveResumeRef.current = false;
       recoveryRef.current = { attempts: Math.max(0, recoveryRef.current.attempts - 1), lastAttemptAt: 0, suggested: recoveryRef.current.suggested };
       autoplayRequestedRef.current = false;
+
+      if (isLiveContent) {
+        persistPlaybackSnapshot(true);
+      }
     };
 
     const onPause = () => {
       setIsPlaying(false);
+      if (!isLiveContent) {
+        persistPlaybackSnapshot(true);
+      }
 
       if (isLiveContent && pendingLiveResumeRef.current) {
         setIsLoading(true);
@@ -730,6 +845,8 @@ const CustomPlayer = ({
     };
 
     const onEnded = () => {
+      persistPlaybackSnapshot(true);
+
       if (isSeriesContent && autoplayEnabled && nextSeriesEpisode && !hasTriggeredSeriesTransition) {
         playNextSeriesEpisode();
         return;
@@ -768,13 +885,25 @@ const CustomPlayer = ({
     clearWaitingTimer,
     hasTriggeredSeriesTransition,
     autoplayEnabled,
+    initialPosition,
     isLiveContent,
     isSeriesContent,
+    isMovieContent,
     nextSeriesEpisode,
     playNextSeriesEpisode,
+    rememberProgressEnabled,
+    persistPlaybackSnapshot,
     recoverLivePlayback,
+    resolvedSource,
     startWaitingRecovery
   ]);
+
+  useEffect(() => {
+    if (isLiveContent || !isReady) return;
+    if (!Number.isFinite(currentTime) || currentTime <= 0) return;
+
+    persistPlaybackSnapshot(false);
+  }, [currentTime, isLiveContent, isReady, persistPlaybackSnapshot]);
 
   const togglePlay = useCallback(() => {
     if (!videoRef.current || !isReady) return;

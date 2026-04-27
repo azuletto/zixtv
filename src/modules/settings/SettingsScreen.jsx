@@ -395,13 +395,14 @@ const SettingsScreen = () => {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-300 text-sm flex items-center">Lembrar progresso <ComingSoonHint /></span>
+                  <span className="text-zinc-300 text-sm flex items-center">Lembrar progresso</span>
                   <button
                     type="button"
-                    disabled
+                    onClick={() => saveSettings('rememberProgress', !settings.rememberProgress)}
                     className={`w-11 h-6 rounded-full transition-colors ${
-                      settings.rememberProgress ? 'bg-red-900/70 cursor-not-allowed' : 'bg-zinc-800 cursor-not-allowed'
+                      settings.rememberProgress ? 'bg-red-600' : 'bg-zinc-800'
                     }`}
+                    aria-label="Alternar lembrar progresso"
                   >
                     <div className={`w-4 h-4 bg-white rounded-full transform transition-transform ${
                       settings.rememberProgress ? 'translate-x-6' : 'translate-x-1'

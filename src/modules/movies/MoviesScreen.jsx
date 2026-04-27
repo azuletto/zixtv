@@ -365,7 +365,13 @@ const MoviesScreen = () => {
               source={selectedMovie.url}
               title={selectedMovie.name}
               type="movie"
-              metadata={selectedMovie.metadata}
+              metadata={{
+                ...selectedMovie.metadata,
+                title: selectedMovie.name || selectedMovie.title,
+                poster: selectedMovie.posterUrl || selectedMovie.logo || selectedMovie?.tvg?.logo || selectedMovie.metadata?.poster,
+                backdrop: selectedMovie.backdropUrl || selectedMovie.logo || selectedMovie?.tvg?.logo || selectedMovie.metadata?.backdrop,
+                logo: selectedMovie.logo || selectedMovie?.tvg?.logo || null
+              }}
               tmdbData={prefetchedTMDBData}
               movieContext={{
                 suggestions: relatedMovieSuggestions,
