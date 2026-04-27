@@ -1,12 +1,7 @@
 const http = require('http');
 const https = require('https');
-const dns = require('dns');
 const { URL } = require('url');
 const { pipeline } = require('stream');
-
-if (typeof dns.setDefaultResultOrder === 'function') {
-  dns.setDefaultResultOrder('ipv4first');
-}
 
 const HTTP_AGENT = new http.Agent({ keepAlive: true, keepAliveMsecs: 10000, maxSockets: 128, maxFreeSockets: 64 });
 const HTTPS_AGENT = new https.Agent({ keepAlive: true, keepAliveMsecs: 10000, maxSockets: 128, maxFreeSockets: 64 });
@@ -16,7 +11,7 @@ const parsePositiveInt = (value, fallback) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
-const CONNECT_TIMEOUT_MS = parsePositiveInt(process.env.PROXY_CONNECT_TIMEOUT_MS, 45000);
+const CONNECT_TIMEOUT_MS = parsePositiveInt(process.env.PROXY_CONNECT_TIMEOUT_MS, 15000);
 const FIRST_BYTE_TIMEOUT_MS = parsePositiveInt(process.env.PROXY_FIRST_BYTE_TIMEOUT_MS, 20000);
 const SOCKET_IDLE_TIMEOUT_MS = parsePositiveInt(process.env.PROXY_SOCKET_IDLE_TIMEOUT_MS, 120000);
 const STREAM_IDLE_TIMEOUT_MS = parsePositiveInt(process.env.PROXY_STREAM_IDLE_TIMEOUT_MS, 180000);
@@ -66,36 +61,10 @@ const passthroughHeaders = [
   'vary'
 ];
 
-const browserHeaderNames = [
-  'user-agent',
-  'accept',
-  'accept-language',
-  'accept-encoding',
-  'cache-control',
-  'pragma',
-  'referer',
-  'origin',
-  'sec-ch-ua',
-  'sec-ch-ua-mobile',
-  'sec-ch-ua-platform',
-  'sec-fetch-dest',
-  'sec-fetch-mode',
-  'sec-fetch-site',
-  'sec-fetch-user'
-];
-
 const sanitizeHeaderValue = (value) => {
   if (value === null || value === undefined) return '';
   const str = Array.isArray(value) ? value.join(', ') : String(value);
   return str.replace(/[\r\n\0]/g, '').trim().slice(0, 8192);
-};
-
-const lookupIPv4 = (hostname, options, callback) => {
-  return dns.lookup(hostname, {
-    ...(options || {}),
-    family: 4,
-    all: false
-  }, callback);
 };
 
 const isClientAbort = (err) => {
@@ -149,21 +118,10 @@ const buildUpstreamHeaders = (req, targetUrl, profile = HEADER_PROFILES[0]) => {
     ...profile.headers
   };
 
-  for (const headerName of browserHeaderNames) {
-    const value = sanitizeHeaderValue(req.headers[headerName]);
-    if (!value) continue;
-
-    const normalizedName = headerName
-      .split('-')
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join('-');
-
-    headers[normalizedName] = value;
-  }
-
+  if (req.headers['accept-language']) headers['Accept-Language'] = req.headers['accept-language'];
   if (req.headers.range) headers.Range = req.headers.range;
   if (req.headers.cookie) headers.Cookie = req.headers.cookie;
-  if (!headers['Accept-Encoding']) headers['Accept-Encoding'] = 'identity';
+  if (!req.headers['accept-encoding']) headers['Accept-Encoding'] = 'identity';
 
   return headers;
 };
@@ -190,8 +148,6 @@ const requestUpstream = (targetUrl, req, res, context, redirectsLeft = 3, attemp
       path: `${targetUrl.pathname}${targetUrl.search}`,
       headers: buildUpstreamHeaders(req, targetUrl, HEADER_PROFILES[profileIndex] || HEADER_PROFILES[0]),
       agent: isHttps ? HTTPS_AGENT : HTTP_AGENT,
-      family: 4,
-      lookup: lookupIPv4,
       servername: isHttps ? targetUrl.hostname : undefined,
       ALPNProtocols: isHttps ? ['http/1.1'] : undefined,
       rejectUnauthorized: process.env.PROXY_TLS_INSECURE === 'true' ? false : undefined

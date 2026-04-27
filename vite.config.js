@@ -10,7 +10,7 @@ const { handleProxy } = require('./proxy-handler.cjs')
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const useHttps = env.VITE_DEV_HTTPS === 'true'
+  const useHttps = mode === 'https' || env.VITE_DEV_HTTPS === 'true'
 
   return {
     plugins: [
@@ -20,8 +20,7 @@ export default defineConfig(({ mode }) => {
         name: 'zixtv-proxy-middleware',
         configureServer(server) {
           server.middlewares.use((req, res, next) => {
-            const protocol = useHttps ? 'https://localhost' : 'http://localhost'
-            const pathname = new URL(req.url || '/', protocol).pathname
+            const pathname = new URL(req.url || '/', 'http://localhost').pathname
 
             if (pathname !== '/api/proxy') {
               next()
@@ -33,8 +32,7 @@ export default defineConfig(({ mode }) => {
         },
         configurePreviewServer(server) {
           server.middlewares.use((req, res, next) => {
-            const protocol = useHttps ? 'https://localhost' : 'http://localhost'
-            const pathname = new URL(req.url || '/', protocol).pathname
+            const pathname = new URL(req.url || '/', 'http://localhost').pathname
 
             if (pathname !== '/api/proxy') {
               next()
@@ -63,11 +61,10 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       open: true,
       host: true,
-      https: useHttps
+      https: useHttps,
     },
     preview: {
-      host: true,
-      https: useHttps
+      https: useHttps,
     },
     build: {
       outDir: 'dist',

@@ -182,9 +182,13 @@ const SettingsScreen = () => {
       ? Math.max(0, Math.min(1, Number(saved.volume)))
       : 1;
     const nextSettings = {
-      ...saved,
       theme: 'dark',
-      volume: normalizedVolume
+      defaultQuality: saved?.defaultQuality || 'auto',
+      autoplay: saved?.autoplay ?? true,
+      rememberProgress: saved?.rememberProgress ?? true,
+      language: saved?.language || 'pt-BR',
+      volume: normalizedVolume,
+      bufferProfile: saved?.bufferProfile || localStorage.getItem('zix.bufferProfile') || 'balanced'
     };
     setSettings(prev => ({ ...prev, ...nextSettings }));
 
@@ -375,13 +379,14 @@ const SettingsScreen = () => {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-300 text-sm flex items-center">Auto-play <ComingSoonHint /></span>
+                  <span className="text-zinc-300 text-sm flex items-center">Auto-play</span>
                   <button
                     type="button"
-                    disabled
+                    onClick={() => saveSettings('autoplay', !settings.autoplay)}
                     className={`w-11 h-6 rounded-full transition-colors ${
-                      settings.autoplay ? 'bg-red-900/70 cursor-not-allowed' : 'bg-zinc-800 cursor-not-allowed'
+                      settings.autoplay ? 'bg-red-600' : 'bg-zinc-800'
                     }`}
+                    aria-label="Alternar auto-play"
                   >
                     <div className={`w-4 h-4 bg-white rounded-full transform transition-transform ${
                       settings.autoplay ? 'translate-x-6' : 'translate-x-1'

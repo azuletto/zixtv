@@ -30,7 +30,12 @@ const PlayerControls = ({
   onCinemaMode,
   onMiniPlayer,
   bufferProfile,
-  onBufferProfileChange
+  onBufferProfileChange,
+  showSeriesNavigation = false,
+  hasPreviousEpisode = false,
+  hasNextEpisode = false,
+  onPreviousEpisode,
+  onNextEpisode
 }) => {
   const [hoverTime, setHoverTime] = useState(currentTime);
   const [hoverPercent, setHoverPercent] = useState(0);
@@ -203,6 +208,30 @@ const PlayerControls = ({
         </div>
 
         <div className="flex items-center space-x-4">
+          {showSeriesNavigation && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onPreviousEpisode}
+                disabled={!hasPreviousEpisode}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white transition-colors hover:bg-black/80 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Episodio anterior"
+                title="Episodio anterior"
+              >
+                <ChevronLeftIcon className="h-5 w-5" />
+              </button>
+
+              <button
+                onClick={onNextEpisode}
+                disabled={!hasNextEpisode}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white transition-colors hover:bg-black/80 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Proximo episodio"
+                title="Proximo episodio"
+              >
+                <ChevronRightIcon className="h-5 w-5" />
+              </button>
+            </div>
+          )}
+
           {}
           <div className="relative">
             <button

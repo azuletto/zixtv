@@ -100,6 +100,22 @@ const MoviesScreen = () => {
   const groupedSafeItems = groupedItems;
   const visibleCount = totalItems;
 
+  const relatedMovieSuggestions = useMemo(() => {
+    if (!selectedMovie) return [];
+
+    const selectedCategory = selectedMovie.categoryDisplay || resolveCategoryLabel(
+      selectedMovie.groupTitle || selectedMovie.group || selectedMovie.originalGroup || selectedMovie.metadata?.genre || selectedMovie.genre
+    );
+
+    return moviesWithCategories
+      .filter((movie) => {
+        if (selectedMovie.id && movie.id && movie.id === selectedMovie.id) return false;
+        if (selectedMovie.url && movie.url && movie.url === selectedMovie.url) return false;
+        return movie.categoryDisplay === selectedCategory;
+      })
+      .slice(0, 6);
+  }, [selectedMovie, moviesWithCategories]);
+
   const handleMovieSelect = (movie) => {
     setStartInCinema(false);
     setPrefetchedTMDBData(null);
@@ -351,6 +367,13 @@ const MoviesScreen = () => {
               type="movie"
               metadata={selectedMovie.metadata}
               tmdbData={prefetchedTMDBData}
+              movieContext={{
+                suggestions: relatedMovieSuggestions,
+                onSelectMovie: (nextMovie) => {
+                  setSelectedMovie(nextMovie);
+                  setPrefetchedTMDBData(null);
+                }
+              }}
               startInCinema={startInCinema}
               onClose={() => {
                 setShowPlayer(false);

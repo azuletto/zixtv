@@ -1,6 +1,6 @@
 
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EpisodeList from './EpisodeList';
 import CustomPlayer from '../player/CustomPlayer';
@@ -127,6 +127,11 @@ const SeriesDetails = ({ series }) => {
     setShowPlayer(true);
   };
 
+  const handleEpisodePlaybackChange = useCallback((episode) => {
+    setSelectedEpisode(episode);
+    setShowPlayer(true);
+  }, []);
+
   const showTMDBSkeleton = isFetchingTMDB && !tmdbData;
 
   return (
@@ -206,6 +211,11 @@ const SeriesDetails = ({ series }) => {
                 type="series"
                 metadata={selectedEpisode.metadata}
                 tmdbData={tmdbData}
+                seriesContext={{
+                  episodes: orderedEpisodes,
+                  currentEpisode: selectedEpisode,
+                  onSelectEpisode: handleEpisodePlaybackChange
+                }}
                 onClose={() => setShowPlayer(false)}
               />
             </div>

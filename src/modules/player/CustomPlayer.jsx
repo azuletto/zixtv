@@ -63,7 +63,56 @@ const BUFFER_PROFILES = {
 
 const BUFFER_PROFILE_ORDER = ['small', 'balanced', 'large', 'xlarge'];
 
-const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startInCinema = false }) => {
+const PlaybackPrompt = ({ isOpen, title, message, confirmText, cancelText, onConfirm, onCancel, showCancel = true }) => (
+  <AnimatePresence>
+    {isOpen && (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="absolute inset-0 z-40 flex items-center justify-center bg-black/70 p-4"
+      >
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          className="w-full max-w-md rounded-xl border border-zinc-700 bg-zinc-900/95 p-5 shadow-2xl"
+        >
+          <h3 className="text-lg font-semibold text-white">{title}</h3>
+          <p className="mt-2 text-sm text-zinc-300">{message}</p>
+          <div className="mt-5 flex items-center justify-end gap-2">
+            {showCancel && (
+              <button
+                onClick={onCancel}
+                className="rounded-lg border border-zinc-600 bg-zinc-800 px-3 py-2 text-sm font-medium text-zinc-200 transition-colors hover:bg-zinc-700"
+              >
+                {cancelText}
+              </button>
+            )}
+            <button
+              onClick={onConfirm}
+              className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
+            >
+              {confirmText}
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
+
+const CustomPlayer = ({
+  source,
+  title,
+  type,
+  metadata,
+  tmdbData,
+  onClose,
+  startInCinema = false,
+  seriesContext,
+  movieContext
+}) => {
   const UI_HIDE_DELAY_MS = 2800;
 
   const videoRef = useRef(null);
@@ -85,13 +134,59 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
-  const [defaultVolume, setDefaultVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [bufferProfile, setBufferProfile] = useState(() => localStorage.getItem('zix.bufferProfile') || 'balanced');
+  const [autoplayEnabled, setAutoplayEnabled] = useState(true);
+  const [seriesPromptState, setSeriesPromptState] = useState(null);
+  const [showMovieSuggestionPrompt, setShowMovieSuggestionPrompt] = useState(false);
+  const [hasShownSeriesPrompt, setHasShownSeriesPrompt] = useState(false);
+  const [hasShownMoviePrompt, setHasShownMoviePrompt] = useState(false);
+  const [hasTriggeredSeriesTransition, setHasTriggeredSeriesTransition] = useState(false);
   
   const { mode, toggleMode, setMode, isMiniPlayer } = usePlayerStore();
   const isLiveContent = type === 'live';
+  const isSeriesContent = type === 'series';
+  const isMovieContent = type === 'movie';
+
+  const seriesEpisodes = useMemo(() => {
+    if (!Array.isArray(seriesContext?.episodes)) return [];
+    return seriesContext.episodes;
+  }, [seriesContext?.episodes]);
+
+  const currentSeriesEpisode = seriesContext?.currentEpisode || null;
+
+  const currentSeriesEpisodeIndex = useMemo(() => {
+    if (!currentSeriesEpisode || seriesEpisodes.length === 0) return -1;
+
+    return seriesEpisodes.findIndex((episode) => {
+      if (currentSeriesEpisode.id && episode.id && currentSeriesEpisode.id === episode.id) return true;
+      if (currentSeriesEpisode.url && episode.url && currentSeriesEpisode.url === episode.url) return true;
+      return (episode.season || 0) === (currentSeriesEpisode.season || 0)
+        && (episode.episode || 0) === (currentSeriesEpisode.episode || 0);
+    });
+  }, [currentSeriesEpisode, seriesEpisodes]);
+
+  const nextSeriesEpisode = useMemo(() => {
+    if (currentSeriesEpisodeIndex < 0) return null;
+    return seriesEpisodes[currentSeriesEpisodeIndex + 1] || null;
+  }, [seriesEpisodes, currentSeriesEpisodeIndex]);
+
+  const previousSeriesEpisode = useMemo(() => {
+    if (currentSeriesEpisodeIndex <= 0) return null;
+    return seriesEpisodes[currentSeriesEpisodeIndex - 1] || null;
+  }, [seriesEpisodes, currentSeriesEpisodeIndex]);
+
+  const isSeriesFinale = isSeriesContent && currentSeriesEpisodeIndex >= 0 && currentSeriesEpisodeIndex === seriesEpisodes.length - 1;
+  const startsNextSeason = Boolean(
+    nextSeriesEpisode
+    && (nextSeriesEpisode.season || 0) !== (currentSeriesEpisode?.season || 0)
+  );
+
+  const movieSuggestion = useMemo(() => {
+    if (!Array.isArray(movieContext?.suggestions) || movieContext.suggestions.length === 0) return null;
+    return movieContext.suggestions[0];
+  }, [movieContext?.suggestions]);
 
   useEffect(() => {
     if (!startInCinema) return;
@@ -102,6 +197,32 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
       setMode('normal');
     };
   }, [startInCinema, setMode]);
+
+  useEffect(() => {
+    setSeriesPromptState(null);
+    setShowMovieSuggestionPrompt(false);
+    setHasShownSeriesPrompt(false);
+    setHasShownMoviePrompt(false);
+    setHasTriggeredSeriesTransition(false);
+  }, [source, type, title]);
+
+  const playNextSeriesEpisode = useCallback(() => {
+    if (!isSeriesContent || !nextSeriesEpisode || hasTriggeredSeriesTransition) return;
+    if (typeof seriesContext?.onSelectEpisode !== 'function') return;
+
+    setHasTriggeredSeriesTransition(true);
+    setSeriesPromptState(null);
+    seriesContext.onSelectEpisode(nextSeriesEpisode);
+  }, [isSeriesContent, nextSeriesEpisode, hasTriggeredSeriesTransition, seriesContext]);
+
+  const playPreviousSeriesEpisode = useCallback(() => {
+    if (!isSeriesContent || !previousSeriesEpisode || hasTriggeredSeriesTransition) return;
+    if (typeof seriesContext?.onSelectEpisode !== 'function') return;
+
+    setHasTriggeredSeriesTransition(true);
+    setSeriesPromptState(null);
+    seriesContext.onSelectEpisode(previousSeriesEpisode);
+  }, [isSeriesContent, previousSeriesEpisode, hasTriggeredSeriesTransition, seriesContext]);
 
   const clearUiHideTimer = useCallback(() => {
     if (hideUiTimeoutRef.current) {
@@ -217,6 +338,47 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
     }
   }, [isLiveContent]);
 
+  useEffect(() => {
+    if (isLiveContent) return;
+    if (!Number.isFinite(duration) || duration <= 0) return;
+
+    const remaining = Math.max(0, duration - currentTime);
+
+    if (isSeriesContent && autoplayEnabled) {
+      if (remaining <= 35 && remaining > 0 && !hasShownSeriesPrompt) {
+        if (nextSeriesEpisode) {
+          setSeriesPromptState(startsNextSeason ? 'next-season' : 'next-episode');
+        } else {
+          setSeriesPromptState('series-finale');
+        }
+        setHasShownSeriesPrompt(true);
+      }
+
+      if (remaining <= 0.35 && nextSeriesEpisode && !hasTriggeredSeriesTransition) {
+        playNextSeriesEpisode();
+      }
+    }
+
+    if (isMovieContent && movieSuggestion && !hasShownMoviePrompt && remaining <= 120 && remaining > 0) {
+      setShowMovieSuggestionPrompt(true);
+      setHasShownMoviePrompt(true);
+    }
+  }, [
+    currentTime,
+    duration,
+    hasShownMoviePrompt,
+    hasShownSeriesPrompt,
+    hasTriggeredSeriesTransition,
+    autoplayEnabled,
+    isLiveContent,
+    isMovieContent,
+    isSeriesContent,
+    movieSuggestion,
+    nextSeriesEpisode,
+    playNextSeriesEpisode,
+    startsNextSeason
+  ]);
+
   
   useEffect(() => {
     if (!isLiveContent || !isPlaying) return;
@@ -251,7 +413,7 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
   useEffect(() => {
     let active = true;
 
-    const loadPlayerSettings = async () => {
+    const loadPlaybackSettings = async () => {
       try {
         const saved = await storageService.getSettings();
         if (!active) return;
@@ -260,30 +422,17 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
           setBufferProfile(saved.bufferProfile);
         }
 
-        if (Number.isFinite(Number(saved?.volume))) {
-          const nextVolume = Math.max(0, Math.min(1, Number(saved.volume)));
-          setDefaultVolume(nextVolume);
-          setVolume(nextVolume);
-          setIsMuted(nextVolume === 0);
-        }
+        setAutoplayEnabled(saved?.autoplay ?? true);
       } catch (error) {
       }
     };
 
-    loadPlayerSettings();
+    loadPlaybackSettings();
 
     return () => {
       active = false;
     };
-  }, []);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    video.volume = Math.max(0, Math.min(1, Number(volume) || 0));
-    video.muted = Boolean(isMuted || volume === 0);
-  }, [volume, isMuted]);
+  }, [source, type]);
 
   
   useEffect(() => {
@@ -298,8 +447,6 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
-    setVolume(defaultVolume);
-    setIsMuted(defaultVolume === 0);
     autoplayRequestedRef.current = true;
     pendingLiveResumeRef.current = false;
     recoveryRef.current = { attempts: 0, lastAttemptAt: 0, suggested: recoveryRef.current.suggested };
@@ -326,8 +473,6 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
     video.playsInline = true;
     video.crossOrigin = 'anonymous';
     video.controlsList = 'nodownload';
-    video.volume = defaultVolume;
-    video.muted = defaultVolume === 0;
 
     const isDirectFile = !isHlsSource && !isLiveContent && (
       source.endsWith('.mp4') ||
@@ -487,7 +632,7 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
         mpegtsRef.current = null;
       }
     };
-  }, [source, isLiveContent, bufferProfile, defaultVolume, getBufferProfileConfig, clearWaitingTimer, recoverLivePlayback]);
+  }, [source, isLiveContent, bufferProfile, getBufferProfileConfig, clearWaitingTimer, recoverLivePlayback]);
 
   
   useEffect(() => {
@@ -584,6 +729,17 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
       }
     };
 
+    const onEnded = () => {
+      if (isSeriesContent && autoplayEnabled && nextSeriesEpisode && !hasTriggeredSeriesTransition) {
+        playNextSeriesEpisode();
+        return;
+      }
+
+      if (isSeriesContent && !nextSeriesEpisode) {
+        setSeriesPromptState('series-finale');
+      }
+    };
+
     video.addEventListener('loadedmetadata', onLoadedMetadata);
     video.addEventListener('canplay', onCanPlay);
     video.addEventListener('playing', onPlaying);
@@ -593,6 +749,7 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
     video.addEventListener('waiting', onWaiting);
     video.addEventListener('stalled', onStalled);
     video.addEventListener('error', onError);
+    video.addEventListener('ended', onEnded);
 
     return () => {
       clearWaitingTimer();
@@ -605,8 +762,19 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
       video.removeEventListener('waiting', onWaiting);
       video.removeEventListener('stalled', onStalled);
       video.removeEventListener('error', onError);
+      video.removeEventListener('ended', onEnded);
     };
-  }, [isLiveContent, clearWaitingTimer, startWaitingRecovery, recoverLivePlayback]);
+  }, [
+    clearWaitingTimer,
+    hasTriggeredSeriesTransition,
+    autoplayEnabled,
+    isLiveContent,
+    isSeriesContent,
+    nextSeriesEpisode,
+    playNextSeriesEpisode,
+    recoverLivePlayback,
+    startWaitingRecovery
+  ]);
 
   const togglePlay = useCallback(() => {
     if (!videoRef.current || !isReady) return;
@@ -636,12 +804,11 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
   }, [isLiveContent]);
 
   const handleVolumeChange = useCallback((newVolume) => {
-    const safeVolume = Math.max(0, Math.min(1, Number(newVolume) || 0));
     if (videoRef.current) {
-      videoRef.current.volume = safeVolume;
+      videoRef.current.volume = newVolume;
     }
-    setVolume(safeVolume);
-    setIsMuted(safeVolume === 0);
+    setVolume(newVolume);
+    setIsMuted(newVolume === 0);
   }, []);
 
   const toggleMute = useCallback(() => {
@@ -717,6 +884,11 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
               onCinemaMode={() => toggleMode('cinema')}
               onMiniPlayer={() => toggleMode('mini')}
               bufferProfile={bufferProfile}
+              showSeriesNavigation={isSeriesContent}
+              hasPreviousEpisode={Boolean(previousSeriesEpisode)}
+              hasNextEpisode={Boolean(nextSeriesEpisode)}
+              onPreviousEpisode={playPreviousSeriesEpisode}
+              onNextEpisode={playNextSeriesEpisode}
               onBufferProfileChange={(nextProfile) => {
                 setAndPersistBufferProfile(nextProfile);
                 if (isLiveContent) {
@@ -754,6 +926,42 @@ const CustomPlayer = ({ source, title, type, metadata, tmdbData, onClose, startI
           onExit={() => toggleMode('cinema')}
         />
       )}
+
+      <PlaybackPrompt
+        isOpen={Boolean(seriesPromptState) && isSeriesContent && autoplayEnabled}
+        title={seriesPromptState === 'series-finale' ? 'Fim da série' : 'Próximo episódio'}
+        message={
+          seriesPromptState === 'series-finale'
+            ? 'Este é o último episódio disponível da série. Você chegou ao final da temporada final.'
+            : startsNextSeason
+              ? `Este episódio termina em ${Math.max(0, Math.ceil(duration - currentTime))}s. A seguir começa a temporada ${nextSeriesEpisode?.season || ''}.`
+              : `Este episódio termina em ${Math.max(0, Math.ceil(duration - currentTime))}s. O próximo episódio vai iniciar automaticamente.`
+        }
+        confirmText={seriesPromptState === 'series-finale' ? 'Entendi' : 'Ir agora'}
+        cancelText="Continuar assistindo"
+        onConfirm={() => {
+          if (seriesPromptState === 'series-finale') {
+            setSeriesPromptState(null);
+            return;
+          }
+          playNextSeriesEpisode();
+        }}
+        onCancel={() => setSeriesPromptState(null)}
+        showCancel={seriesPromptState !== 'series-finale'}
+      />
+
+      <PlaybackPrompt
+        isOpen={showMovieSuggestionPrompt && isMovieContent && Boolean(movieSuggestion)}
+        title="Sugestão para assistir depois"
+        message={`Faltam cerca de 2 minutos para o filme terminar. Recomendação da mesma categoria: ${movieSuggestion?.name || movieSuggestion?.title || 'Filme sugerido'}.`}
+        confirmText="Abrir sugestão"
+        cancelText="Agora não"
+        onConfirm={() => {
+          setShowMovieSuggestionPrompt(false);
+          movieContext?.onSelectMovie?.(movieSuggestion);
+        }}
+        onCancel={() => setShowMovieSuggestionPrompt(false)}
+      />
     </div>
   );
 };
