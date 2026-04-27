@@ -135,7 +135,7 @@ const AboutScreen = () => {
               </div>
             </div>
             <h2 className="text-3xl font-bold text-white mb-2">ZixTV - Player IPTV</h2>
-            <p className="text-zinc-500 text-base">Versão 1.0.0 Alpha</p>
+            <p className="text-zinc-500 text-base">Versão 1.2.0 Alpha</p>
           </div>
 
           {}

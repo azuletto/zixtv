@@ -5,7 +5,7 @@
 <p><b>A modern, open-source IPTV management platform & player.</b></p>  <p></p>
 
 <p>
-  <img src="https://img.shields.io/badge/version-1.0.0--alpha-7B61FF?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/version-1.2.0--alpha-7B61FF?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/github/license/azuletto/ZixTV?style=for-the-badge" alt="License" />
   <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind" />

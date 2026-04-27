@@ -570,7 +570,7 @@ const SettingsScreen = () => {
           >
             <div className="p-5">
               <h2 className="text-lg font-semibold text-white mb-2">ZixTV</h2>
-              <p className="text-zinc-500 text-sm">v1.0.0 Alpha</p>
+              <p className="text-zinc-500 text-sm">v1.2.0 Alpha</p>
               <p className="text-zinc-500 text-sm mt-2">
                 Um organizador e player IPTV completo com interface moderna.
               </p>

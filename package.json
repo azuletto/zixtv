@@ -1,6 +1,6 @@
 {
-  "name": "iptv-netflix-clone",
-  "version": "1.0.0",
+  "name": "zixtv",
+  "version": "1.2.0",
   "private": true,
   "dependencies": {
     "@fontsource/inter": "^5.2.8",

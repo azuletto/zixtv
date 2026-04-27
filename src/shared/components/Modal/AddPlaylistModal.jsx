@@ -99,7 +99,7 @@ const PrivacyTermsModal = ({ isOpen, onClose, onAccept }) => {
           </p>
           <div className="pt-3 border-t border-zinc-800">
             <p className="text-zinc-500 text-xs">
-              Versão 1.0.0 Alpha - Atualizado em Abril de 2026
+              Versão 1.2.0 Alpha - Atualizado em Abril de 2026
             </p>
           </div>
         </div>
