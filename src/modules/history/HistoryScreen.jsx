@@ -177,28 +177,28 @@ const HistoryScreen = () => {
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => clearTab('series')}
-              className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs text-zinc-300 hover:border-red-500 hover:text-white"
+              className="home-control home-control-hover gap-1 px-3 py-2 text-xs text-zinc-300"
             >
               <TrashIcon className="h-3.5 w-3.5" />
               Limpar séries
             </button>
             <button
               onClick={() => clearTab('movie')}
-              className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs text-zinc-300 hover:border-red-500 hover:text-white"
+              className="home-control home-control-hover gap-1 px-3 py-2 text-xs text-zinc-300"
             >
               <TrashIcon className="h-3.5 w-3.5" />
               Limpar filmes
             </button>
             <button
               onClick={() => clearTab('live')}
-              className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs text-zinc-300 hover:border-red-500 hover:text-white"
+              className="home-control home-control-hover gap-1 px-3 py-2 text-xs text-zinc-300"
             >
               <TrashIcon className="h-3.5 w-3.5" />
               Limpar canais
             </button>
             <button
               onClick={clearAll}
-              className="inline-flex items-center gap-1 rounded-lg border border-red-700/60 bg-red-900/20 px-3 py-2 text-xs text-red-200 hover:bg-red-900/35"
+              className="home-control home-control-danger home-control-danger-hover gap-1 px-3 py-2 text-xs"
             >
               <TrashIcon className="h-3.5 w-3.5" />
               Limpar tudo
@@ -206,7 +206,7 @@ const HistoryScreen = () => {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 rounded-xl border border-zinc-800 bg-zinc-900/70 p-2">
+        <div className="home-panel flex flex-wrap gap-2 p-2">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.key;
@@ -217,8 +217,8 @@ const HistoryScreen = () => {
                 onClick={() => setActiveTab(tab.key)}
                 className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-red-600 text-white'
-                    : 'text-zinc-300 hover:bg-zinc-800'
+                    ? 'home-control-active'
+                    : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -241,9 +241,9 @@ const HistoryScreen = () => {
             className={`ml-auto inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-xs transition-colors ${
               isSelectionMode
                 ? selectedForDeletion.size > 0
-                  ? 'border-red-600 bg-red-600/20 text-red-200 hover:bg-red-600/35'
-                  : 'border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-red-500 hover:text-white'
-                : 'border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-red-500 hover:text-white'
+                  ? 'home-control-danger home-control-danger-hover'
+                  : 'home-control-hover text-zinc-300'
+                : 'home-control-hover text-zinc-300'
             }`}
           >
             <TrashIcon className="h-3.5 w-3.5" />
@@ -260,7 +260,7 @@ const HistoryScreen = () => {
             <div className="h-12 w-12 animate-spin rounded-full border-4 border-red-600/20 border-t-red-600" />
           </div>
         ) : visibleItems.length === 0 ? (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-10 text-center">
+          <div className="home-panel p-10 text-center">
             <p className="text-zinc-300">Nenhum item nesta aba.</p>
           </div>
         ) : (
@@ -288,7 +288,7 @@ const HistoryScreen = () => {
                       className={`group w-full overflow-hidden rounded-lg border text-left transition-all duration-200 ${
                         isSelected
                           ? 'border-red-500 bg-red-600/10 hover:-translate-y-0'
-                          : 'border-zinc-800 bg-zinc-900/70 hover:-translate-y-0.5 hover:border-red-500/60 hover:shadow-lg hover:shadow-red-500/10'
+                          : 'home-card-shell home-card-shell-hover hover:-translate-y-0.5'
                       }`}
                     >
                       <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
@@ -354,7 +354,7 @@ const HistoryScreen = () => {
                 <button
                   onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  className="home-control home-control-hover h-9 w-9 px-0 py-0 disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label="Página anterior"
                 >
                   <ChevronLeftIcon className="h-4 w-4" />
@@ -367,7 +367,7 @@ const HistoryScreen = () => {
                 <button
                   onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  className="home-control home-control-hover h-9 w-9 px-0 py-0 disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label="Próxima página"
                 >
                   <ChevronRightIcon className="h-4 w-4" />

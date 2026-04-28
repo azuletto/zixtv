@@ -70,7 +70,7 @@ const PlaylistManager = () => {
         <h2 className="text-2xl font-bold text-white">Gerenciar Playlists</h2>
         <button
           onClick={() => setShowAddModal(true)}
-          className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center"
+          className="flex items-center rounded-lg border border-red-500/40 bg-red-600/90 px-4 py-2 text-white transition-colors hover:bg-red-600"
         >
           <PlusIcon className="w-5 h-5 mr-2" />
           Nova Playlist
@@ -80,23 +80,23 @@ const PlaylistManager = () => {
       {}
       {playlists.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gray-800 rounded-lg p-4">
+          <div className="home-panel p-4">
             <p className="text-gray-400 text-sm">Total Playlists</p>
             <p className="text-2xl font-bold text-white">{playlists.length}</p>
           </div>
-          <div className="bg-gray-800 rounded-lg p-4">
+          <div className="home-panel p-4">
             <p className="text-gray-400 text-sm">Canais Ao Vivo</p>
             <p className="text-2xl font-bold text-white">
               {playlists.reduce((acc, p) => acc + (p.live?.length || 0), 0)}
             </p>
           </div>
-          <div className="bg-gray-800 rounded-lg p-4">
+          <div className="home-panel p-4">
             <p className="text-gray-400 text-sm">Filmes</p>
             <p className="text-2xl font-bold text-white">
               {playlists.reduce((acc, p) => acc + (p.movies?.length || 0), 0)}
             </p>
           </div>
-          <div className="bg-gray-800 rounded-lg p-4">
+          <div className="home-panel p-4">
             <p className="text-gray-400 text-sm">Séries</p>
             <p className="text-2xl font-bold text-white">
               {playlists.reduce((acc, p) => acc + (p.series?.length || 0), 0)}
@@ -115,7 +115,7 @@ const PlaylistManager = () => {
           <p className="text-gray-400 mb-4">Nenhuma playlist adicionada</p>
           <button
             onClick={() => setShowAddModal(true)}
-            className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors inline-flex items-center"
+            className="inline-flex items-center rounded-lg border border-red-500/40 bg-red-600/90 px-6 py-3 text-white transition-colors hover:bg-red-600"
           >
             <PlusIcon className="w-5 h-5 mr-2" />
             Adicionar Primeira Playlist
@@ -133,8 +133,8 @@ const PlaylistManager = () => {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 whileHover={{ scale: 1.02 }}
-                className={`bg-gray-800 rounded-lg p-6 cursor-pointer transition-all ${
-                  isActive ? 'ring-2 ring-red-600' : 'hover:bg-gray-750'
+                className={`home-panel home-panel-hover relative cursor-pointer p-6 transition-all ${
+                  isActive ? 'border-red-500 shadow-lg shadow-red-500/15' : ''
                 }`}
                 onClick={() => selectPlaylist(playlist)}
               >
@@ -154,7 +154,7 @@ const PlaylistManager = () => {
                         e.stopPropagation();
                         setEditingPlaylist(playlist);
                       }}
-                      className="text-gray-400 hover:text-white transition-colors"
+                      className="text-gray-400 transition-colors hover:text-white"
                     >
                       <PencilIcon className="w-5 h-5" />
                     </button>
@@ -163,7 +163,7 @@ const PlaylistManager = () => {
                         e.stopPropagation();
                         setPlaylistToDelete(playlist);
                       }}
-                      className="text-gray-400 hover:text-red-600 transition-colors"
+                      className="text-gray-400 transition-colors hover:text-red-400"
                     >
                       <TrashIcon className="w-5 h-5" />
                     </button>
@@ -187,7 +187,7 @@ const PlaylistManager = () => {
                 </div>
 
                 {}
-                <div className="flex justify-between items-center pt-4 border-t border-gray-700">
+                <div className="flex items-center justify-between border-t border-zinc-800 pt-4">
                   <span className="text-xs text-gray-500">
                     Adicionada em {new Date(playlist.createdAt).toLocaleDateString()}
                   </span>

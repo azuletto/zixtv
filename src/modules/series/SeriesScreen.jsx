@@ -1,6 +1,6 @@
 
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usePlaylist } from '../../shared/hooks/usePlaylist';
@@ -9,6 +9,7 @@ import MediaCard from '../../shared/components/MediaCard/MediaCard';
 import SeriesDetails from './SeriesDetails';
 import CategorySection from '../../shared/components/CategorySection/CategorySection';
 import ViewModeToggle from '../../shared/components/ViewModeToggle/ViewModeToggle';
+import { useFocusable } from '../../shared/hooks/useFocusable';
 import { SearchIcon, ArrowLeftIcon, XIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 
 const cleanTitle = (title) => {
@@ -29,6 +30,7 @@ const SeriesScreen = () => {
   const [selectedSeries, setSelectedSeries] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const searchInputRef = useRef(null);
 
   const allSeries = getSeries() || [];
 
@@ -95,6 +97,26 @@ const SeriesScreen = () => {
     setSelectedSeries(null);
   }, []);
 
+  const { ref: seriesBackRef, isFocused: isSeriesBackFocused } = useFocusable('series-back-button', {
+    group: 'series-controls',
+    onSelect: handleBackToGrid,
+  });
+
+  const { ref: seriesSearchRef, isFocused: isSeriesSearchFocused } = useFocusable('series-search-input', {
+    group: 'series-controls',
+    onSelect: () => searchInputRef.current?.focus(),
+  });
+
+  const { ref: seriesClearSearchRef, isFocused: isSeriesClearSearchFocused } = useFocusable('series-search-clear', {
+    group: 'series-controls',
+    onSelect: () => syncSearch(''),
+  });
+
+  const { ref: seriesCategoryToggleRef, isFocused: isSeriesCategoryToggleFocused } = useFocusable('series-category-toggle', {
+    group: 'series-controls',
+    onSelect: () => setShowCategoryDropdown((prev) => !prev),
+  });
+
   useEffect(() => {
     const openSeries = location.state?.openSeries;
     if (!openSeries || allSeries.length === 0) return;
@@ -138,8 +160,9 @@ const SeriesScreen = () => {
       <div className="min-h-screen bg-zinc-950 overflow-x-hidden">
         <div className="sticky top-0 z-20 px-6 py-4 bg-zinc-950/95 backdrop-blur border-b border-zinc-800">
           <button
+            ref={seriesBackRef}
             onClick={handleBackToGrid}
-            className="inline-flex items-center gap-2 text-zinc-300 hover:text-white transition-colors"
+            className={`inline-flex items-center gap-2 transition-colors ${isSeriesBackFocused ? 'text-red-500 font-semibold' : 'text-zinc-300 hover:text-white'}`}
           >
             <ArrowLeftIcon className="w-4 h-4" />
             Voltar para séries
@@ -167,18 +190,23 @@ const SeriesScreen = () => {
             <div className="relative flex-1 max-w-xl">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
             <input
+              ref={(node) => {
+                searchInputRef.current = node;
+                seriesSearchRef.current = node;
+              }}
               type="text"
               placeholder="Buscar séries..."
               value={searchQuery}
               onChange={(e) => syncSearch(e.target.value)}
-              className="w-full bg-zinc-900 border border-zinc-800 text-white rounded-lg pl-10 pr-10 py-2.5 focus:outline-none focus:border-red-600 transition-colors"
+              className={`home-input home-input-hover w-full pl-10 pr-10 py-2.5 ${isSeriesSearchFocused ? 'border-red-500 ring-2 ring-red-500/20' : ''}`}
             />
             {searchQuery && (
               <button
+                ref={seriesClearSearchRef}
                 onClick={() => syncSearch('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2"
               >
-                <XIcon className="w-5 h-5 text-zinc-500 hover:text-zinc-300" />
+                <XIcon className={`w-5 h-5 transition-colors ${isSeriesClearSearchFocused ? 'text-red-500' : 'text-zinc-500 hover:text-zinc-300'}`} />
               </button>
             )}
             </div>
@@ -186,8 +214,9 @@ const SeriesScreen = () => {
             {viewMode === 'grid' && categories.length > 1 && (
               <div className="relative">
                 <button
+                  ref={seriesCategoryToggleRef}
                   onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-                  className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 text-white rounded-lg px-4 py-2.5 hover:border-red-600 transition-colors"
+                  className={`home-control home-control-hover gap-2 px-4 py-2.5 text-white ${isSeriesCategoryToggleFocused ? 'home-control-active' : ''}`}
                 >
                   <span className="text-sm max-w-[150px] truncate">
                     {filter === 'all' ? 'Todas as categorias' : filter}
@@ -198,7 +227,7 @@ const SeriesScreen = () => {
                 {showCategoryDropdown && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShowCategoryDropdown(false)} />
-                    <div className="absolute right-0 mt-1 w-56 max-h-80 overflow-y-auto bg-zinc-900 border border-zinc-800 rounded-lg shadow-lg z-20 py-1">
+                    <div className="absolute right-0 z-20 mt-1 w-56 max-h-80 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-900/95 py-1 shadow-lg backdrop-blur-sm">
                       {categories.map((category) => (
                         <button
                           key={category}
@@ -207,7 +236,7 @@ const SeriesScreen = () => {
                             setShowCategoryDropdown(false);
                           }}
                           className={`w-full text-left px-3 py-2 text-sm transition-colors truncate ${
-                            filter === category ? 'text-red-500 bg-zinc-800' : 'text-zinc-300 hover:bg-zinc-800'
+                            filter === category ? 'bg-zinc-800 text-red-400' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
                           }`}
                         >
                           {category === 'all' ? 'Todas as categorias' : category}
@@ -257,7 +286,7 @@ const SeriesScreen = () => {
                 <button
                   onClick={prevPage}
                   disabled={currentPage === 1}
-                  className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="home-control home-control-hover h-9 w-9 px-0 py-0 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ChevronLeftIcon className="w-5 h-5" />
                 </button>
@@ -283,8 +312,8 @@ const SeriesScreen = () => {
                         onClick={() => goToPage(page)}
                         className={`min-w-[36px] h-9 rounded-lg font-medium transition-all ${
                           currentPage === page
-                            ? 'bg-red-600 text-white'
-                            : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-red-600'
+                            ? 'home-control home-control-active'
+                            : 'home-control home-control-hover'
                         }`}
                       >
                         {page}
@@ -296,7 +325,7 @@ const SeriesScreen = () => {
                 <button
                   onClick={nextPage}
                   disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="home-control home-control-hover h-9 w-9 px-0 py-0 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ChevronRightIcon className="w-5 h-5" />
                 </button>
@@ -321,5 +350,4 @@ const SeriesScreen = () => {
 };
 
 export default SeriesScreen;
-
 

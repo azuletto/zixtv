@@ -27,7 +27,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        className="home-control home-control-hover h-9 w-9 px-0 py-0 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <ChevronLeftIcon className="w-5 h-5" />
       </button>
@@ -39,8 +39,8 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
             onClick={() => onPageChange(page)}
             className={`min-w-[36px] h-9 rounded-lg font-medium transition-all ${
               currentPage === page
-                ? 'bg-red-600 text-white'
-                : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-red-600'
+                ? 'home-control home-control-active'
+                : 'home-control home-control-hover'
             }`}
           >
             {page}
@@ -51,7 +51,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        className="home-control home-control-hover h-9 w-9 px-0 py-0 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <ChevronRightIcon className="w-5 h-5" />
       </button>

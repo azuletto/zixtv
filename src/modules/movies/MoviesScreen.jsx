@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usePlaylist } from '../../shared/hooks/usePlaylist';
@@ -7,6 +7,7 @@ import { usePaginatedContent } from '../../shared/hooks/usePaginatedContent';
 import MediaCard from '../../shared/components/MediaCard/MediaCard';
 import CategorySection from '../../shared/components/CategorySection/CategorySection';
 import ViewModeToggle from '../../shared/components/ViewModeToggle/ViewModeToggle';
+import { useFocusable } from '../../shared/hooks/useFocusable';
 import CustomPlayer from '../player/CustomPlayer';
 import { ChevronLeftIcon, ChevronRightIcon, SearchIcon, XIcon, ChevronDownIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 
@@ -30,6 +31,7 @@ const MoviesScreen = () => {
   const [startInCinema, setStartInCinema] = useState(false);
   const [prefetchedTMDBData, setPrefetchedTMDBData] = useState(null);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const searchInputRef = useRef(null);
   
   const allMovies = getMovies() || [];
   
@@ -123,6 +125,21 @@ const MoviesScreen = () => {
     setShowPlayer(true);
   };
 
+  const { ref: moviesSearchRef, isFocused: isMoviesSearchFocused } = useFocusable('movies-search-input', {
+    group: 'movies-controls',
+    onSelect: () => searchInputRef.current?.focus(),
+  });
+
+  const { ref: moviesClearSearchRef, isFocused: isMoviesClearSearchFocused } = useFocusable('movies-search-clear', {
+    group: 'movies-controls',
+    onSelect: () => setSearchQuery(''),
+  });
+
+  const { ref: moviesCategoryToggleRef, isFocused: isMoviesCategoryToggleFocused } = useFocusable('movies-category-toggle', {
+    group: 'movies-controls',
+    onSelect: () => setShowCategoryDropdown((prev) => !prev),
+  });
+
   useEffect(() => {
     const autoPlayItem = location.state?.autoPlayItem;
     if (!autoPlayItem || allMovies.length === 0) return;
@@ -188,18 +205,23 @@ const MoviesScreen = () => {
             <div className="relative flex-1">
               <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
               <input
+                ref={(node) => {
+                  searchInputRef.current = node;
+                  moviesSearchRef.current = node;
+                }}
                 type="text"
                 placeholder="Buscar filmes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 text-white rounded-lg pl-10 pr-10 py-2.5 focus:outline-none focus:border-red-600 transition-colors"
+                className={`home-input home-input-hover w-full pl-10 pr-10 py-2.5 ${isMoviesSearchFocused ? 'border-red-500 ring-2 ring-red-500/20' : ''}`}
               />
               {searchQuery && (
                 <button
+                  ref={moviesClearSearchRef}
                   onClick={() => setSearchQuery('')}
                   className="absolute right-3 top-1/2 -translate-y-1/2"
                 >
-                  <XIcon className="w-5 h-5 text-zinc-500 hover:text-zinc-300" />
+                  <XIcon className={`w-5 h-5 transition-colors ${isMoviesClearSearchFocused ? 'text-red-500' : 'text-zinc-500 hover:text-zinc-300'}`} />
                 </button>
               )}
             </div>
@@ -208,8 +230,9 @@ const MoviesScreen = () => {
             {viewMode === 'grid' && categories.length > 1 && (
               <div className="relative">
                 <button
+                  ref={moviesCategoryToggleRef}
                   onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-                  className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 text-white rounded-lg px-4 py-2.5 hover:border-red-600 transition-colors"
+                  className={`home-control home-control-hover gap-2 px-4 py-2.5 text-white ${isMoviesCategoryToggleFocused ? 'home-control-active' : ''}`}
                 >
                   <span className="text-sm max-w-[150px] truncate">
                     {filter === 'all' ? 'Todas as categorias' : filter}
@@ -220,7 +243,7 @@ const MoviesScreen = () => {
                 {showCategoryDropdown && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShowCategoryDropdown(false)} />
-                    <div className="absolute right-0 mt-1 w-56 max-h-80 overflow-y-auto bg-zinc-900 border border-zinc-800 rounded-lg shadow-lg z-20 py-1">
+                    <div className="absolute right-0 z-20 mt-1 w-56 max-h-80 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-900/95 py-1 shadow-lg backdrop-blur-sm">
                       {categories.map(category => (
                         <button
                           key={category}
@@ -230,8 +253,8 @@ const MoviesScreen = () => {
                           }}
                           className={`w-full text-left px-3 py-2 text-sm transition-colors truncate ${
                             filter === category 
-                              ? 'text-red-500 bg-zinc-800' 
-                              : 'text-zinc-300 hover:bg-zinc-800'
+                              ? 'bg-zinc-800 text-red-400'
+                              : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
                           }`}
                         >
                           {category === 'all' ? 'Todas as categorias' : category}
@@ -285,7 +308,7 @@ const MoviesScreen = () => {
                 <button
                   onClick={prevPage}
                   disabled={currentPage === 1}
-                  className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="home-control home-control-hover h-9 w-9 px-0 py-0 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ChevronLeftIcon className="w-5 h-5" />
                 </button>
@@ -313,8 +336,8 @@ const MoviesScreen = () => {
                         onClick={() => goToPage(page)}
                         className={`min-w-[36px] h-9 rounded-lg font-medium transition-all ${
                           currentPage === page
-                            ? 'bg-red-600 text-white'
-                            : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-red-600'
+                            ? 'home-control home-control-active'
+                            : 'home-control home-control-hover'
                         }`}
                       >
                         {page}
@@ -326,7 +349,7 @@ const MoviesScreen = () => {
                 <button
                   onClick={nextPage}
                   disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="home-control home-control-hover h-9 w-9 px-0 py-0 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ChevronRightIcon className="w-5 h-5" />
                 </button>
@@ -395,4 +418,3 @@ const MoviesScreen = () => {
 };
 
 export default MoviesScreen;
-

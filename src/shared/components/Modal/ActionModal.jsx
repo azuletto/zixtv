@@ -30,7 +30,7 @@ const ActionModal = ({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="relative w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl"
+            className="relative w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900/95 shadow-xl backdrop-blur-sm"
           >
             <div className="border-b border-zinc-800 px-5 py-4">
               <h3 className="text-lg font-semibold text-white">{title}</h3>
@@ -44,7 +44,7 @@ const ActionModal = ({
               {showCancel && (
                 <button
                   onClick={onClose}
-                  className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-200 transition-colors hover:bg-zinc-700"
+                  className="home-control home-control-hover px-4 py-2 text-sm font-medium text-zinc-200"
                 >
                   {cancelText}
                 </button>
@@ -52,8 +52,10 @@ const ActionModal = ({
               <button
                 onClick={onConfirm}
                 disabled={confirmDisabled}
-                className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-                  danger ? 'bg-red-600 hover:bg-red-700' : 'bg-red-600 hover:bg-red-700'
+                className={`rounded-lg border px-4 py-2 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                  danger
+                    ? 'border-red-500/40 bg-red-600/90 hover:bg-red-600'
+                    : 'border-red-500/40 bg-red-600/90 hover:bg-red-600'
                 }`}
               >
                 {confirmText}

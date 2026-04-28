@@ -3,6 +3,8 @@ import React, { useState, useCallback, useMemo, useTransition, useRef, useEffect
 import { motion, AnimatePresence } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
 import { usePlaylist } from '../../hooks/usePlaylist';
+import { useFocusable } from '../../hooks/useFocusable';
+import { useNavigationStore } from '../../../app/store/navigationStore';
 
 import { 
   HomeIcon, 
@@ -34,9 +36,17 @@ import logoZixTV from '../../../assets/logo-zix-tv.png';
 
 const PlaylistDropdown = ({ playlists, selectedPlaylist, onSelect, isCollapsed }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(
+    playlists.findIndex(p => p.id === selectedPlaylist?.id) || 0
+  );
   const dropdownRef = useRef(null);
-  const selectedItemRef = useRef(null);
   const menuRef = useRef(null);
+  const itemRefs = useRef([]);
+
+  const { ref: dropdownToggleRef, isFocused: isDropdownFocused } = useFocusable('sidebar-playlist-dropdown', {
+    group: 'sidebar-menu',
+    onSelect: () => setIsOpen((prev) => !prev),
+  });
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -47,6 +57,56 @@ const PlaylistDropdown = ({ playlists, selectedPlaylist, onSelect, isCollapsed }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (isOpen && itemRefs.current[selectedIndex]) {
+      itemRefs.current[selectedIndex].scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }
+  }, [isOpen, selectedIndex]);
+
+  const handleKeyDown = useCallback((e) => {
+    if (!isOpen) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        setIsOpen(true);
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev + 1) % playlists.length);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev - 1 + playlists.length) % playlists.length);
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        onSelect(playlists[selectedIndex]);
+        setIsOpen(false);
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setIsOpen(false);
+        break;
+      default:
+        break;
+    }
+  }, [isOpen, playlists, selectedIndex, onSelect]);
+
+  useEffect(() => {
+    const button = dropdownToggleRef.current;
+    if (button) {
+      button.addEventListener('keydown', handleKeyDown);
+      return () => button.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [handleKeyDown]);
 
   useEffect(() => {
     if (isOpen && selectedItemRef.current && menuRef.current) {
@@ -67,8 +127,13 @@ const PlaylistDropdown = ({ playlists, selectedPlaylist, onSelect, isCollapsed }
     return (
       <div className="relative" ref={dropdownRef}>
         <button
+          ref={dropdownToggleRef}
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full flex items-center justify-center p-2 rounded-lg hover:bg-zinc-800 transition-colors"
+          className={`w-full flex items-center justify-center rounded-lg border transition-all duration-200 p-2 ${
+            isDropdownFocused
+              ? 'border-red-500 bg-zinc-800/90 shadow-lg shadow-red-500/10'
+              : 'border-transparent hover:border-red-500 hover:bg-zinc-800/90 hover:shadow-lg hover:shadow-red-500/10'
+          }`}
         >
           <div className="p-1 rounded-md bg-red-600/20 text-red-500">
             <FolderIcon className="w-5 h-5" />
@@ -83,23 +148,26 @@ const PlaylistDropdown = ({ playlists, selectedPlaylist, onSelect, isCollapsed }
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: -10, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute left-full top-0 ml-2 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl overflow-hidden z-50 min-w-[200px]"
+              className="absolute left-full top-0 z-50 ml-2 min-w-[200px] overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/95 shadow-xl backdrop-blur-sm"
             >
               <div className="max-h-80 overflow-y-auto">
-                {playlists.map(playlist => {
+                {playlists.map((playlist, index) => {
                   const isSelected = selectedPlaylist?.id === playlist.id;
+                  const isHighlighted = index === selectedIndex;
                   return (
                     <button
                       key={playlist.id}
-                      ref={isSelected ? selectedItemRef : null}
+                      ref={(el) => (itemRefs.current[index] = el)}
                       onClick={() => {
                         onSelect(playlist);
                         setIsOpen(false);
                       }}
                       className={`w-full flex items-center gap-2 px-3 py-2.5 transition-colors ${
-                        isSelected
-                          ? 'bg-red-600/20 text-red-500'
-                          : 'hover:bg-zinc-800 text-gray-300'
+                        isHighlighted
+                          ? 'bg-red-600/30 text-red-400 border-l-2 border-red-500'
+                          : isSelected
+                            ? 'bg-zinc-800 text-red-400'
+                            : 'text-gray-300 hover:bg-zinc-800 hover:text-white'
                       }`}
                     >
                       <div className="p-1 rounded-md bg-zinc-800 text-gray-400">
@@ -123,8 +191,13 @@ const PlaylistDropdown = ({ playlists, selectedPlaylist, onSelect, isCollapsed }
   return (
     <div className="relative" ref={dropdownRef}>
       <button
+        ref={dropdownToggleRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between gap-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 transition-all duration-200 group"
+        className={`w-full flex items-center justify-between gap-2 rounded-lg border px-3 py-2 transition-all duration-200 group ${
+          isDropdownFocused
+            ? 'border-red-500 bg-zinc-800/90 shadow-lg shadow-red-500/10'
+            : 'border-zinc-800 bg-zinc-900 hover:border-red-500 hover:bg-zinc-800/90 hover:shadow-lg hover:shadow-red-500/10'
+        }`}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div className="p-1 rounded-md bg-red-600/20 text-red-500">
@@ -150,23 +223,26 @@ const PlaylistDropdown = ({ playlists, selectedPlaylist, onSelect, isCollapsed }
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl overflow-hidden z-50"
+            className="absolute top-full left-0 right-0 mt-2 z-50 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/95 shadow-xl backdrop-blur-sm"
           >
             <div className="max-h-80 overflow-y-auto">
-              {playlists.map(playlist => {
+              {playlists.map((playlist, index) => {
                 const isSelected = selectedPlaylist?.id === playlist.id;
+                const isHighlighted = index === selectedIndex;
                 return (
                   <button
                     key={playlist.id}
-                    ref={isSelected ? selectedItemRef : null}
+                    ref={(el) => (itemRefs.current[index] = el)}
                     onClick={() => {
                       onSelect(playlist);
                       setIsOpen(false);
                     }}
                     className={`w-full flex items-center gap-2 px-3 py-2.5 transition-colors ${
-                      isSelected
-                        ? 'bg-red-600/20 text-red-500'
-                        : 'hover:bg-zinc-800 text-gray-300'
+                      isHighlighted
+                        ? 'bg-red-600/30 text-red-400 border-l-2 border-red-500'
+                        : isSelected
+                          ? 'bg-zinc-800 text-red-400'
+                          : 'text-gray-300 hover:bg-zinc-800 hover:text-white'
                     }`}
                   >
                     <div className="p-1 rounded-md bg-zinc-800 text-gray-400">
@@ -187,16 +263,43 @@ const PlaylistDropdown = ({ playlists, selectedPlaylist, onSelect, isCollapsed }
   );
 };
 
+const FocusableNavItem = ({ itemId, to, className, children }) => {
+  const { ref, isFocused } = useFocusable(itemId, {
+    group: 'sidebar-menu',
+  });
+
+  return (
+    <NavLink
+      ref={ref}
+      to={to}
+      className={({ isActive }) => {
+        const baseClass = typeof className === 'function' ? className({ isActive }) : className;
+        if (isFocused && !isActive) {
+          return `${baseClass} border-red-500 bg-zinc-800/90 text-white scale-[1.02] shadow-lg shadow-red-500/10`;
+        }
+        return baseClass;
+      }}
+    >
+      {children}
+    </NavLink>
+  );
+};
+
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [donatePulseKey, setDonatePulseKey] = useState(0);
   const [isPending, startTransition] = useTransition();
   const { playlists, activePlaylist, selectPlaylist } = usePlaylist();
+  const { isSidebarOpen, setSidebarOpen } = useNavigationStore();
 
   useEffect(() => {
     setDonatePulseKey((prev) => prev + 1);
   }, []);
+
+  useEffect(() => {
+    setIsCollapsed(!isSidebarOpen);
+  }, [isSidebarOpen]);
 
   const menuItems = useMemo(() => [
     { label: 'Início', path: '/', icon: HomeIcon, solidIcon: HomeSolidIcon },
@@ -221,8 +324,10 @@ const Sidebar = () => {
   
   const handleToggleCollapse = useCallback(() => {
     setDonatePulseKey((prev) => prev + 1);
-    setIsCollapsed(prev => !prev);
-  }, []);
+    const nextCollapsed = !isCollapsed;
+    setIsCollapsed(nextCollapsed);
+    setSidebarOpen(!nextCollapsed);
+  }, [isCollapsed, setSidebarOpen]);
 
   const handlePlaylistSelect = useCallback((playlist) => {
     if (playlist && playlist.id !== activePlaylist?.id) {
@@ -292,14 +397,15 @@ const Sidebar = () => {
         <nav className="flex-1 py-4 overflow-y-auto">
           <div className="px-3 space-y-1">
             {menuItems.map((item) => (
-              <NavLink
+              <FocusableNavItem
                 key={item.path}
+                itemId={`sidebar-item-${item.path}`}
                 to={item.path}
                 className={({ isActive }) => `
-                  flex items-center px-3 py-2 rounded-lg transition-all duration-200
+                  flex items-center px-3 py-2 rounded-lg border border-transparent transition-all duration-200
                   ${isActive 
-                    ? 'bg-red-600 text-white shadow-lg shadow-red-600/25' 
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                    ? 'border-red-500 bg-red-600 text-white scale-[1.02] shadow-xl shadow-red-500/20' 
+                    : 'text-zinc-400 hover:border-red-500 hover:bg-zinc-800/90 hover:text-white hover:scale-[1.02] hover:shadow-lg hover:shadow-red-500/10'
                   }
                   ${isCollapsed ? 'justify-center' : ''}
                 `}
@@ -314,7 +420,7 @@ const Sidebar = () => {
                     {!isCollapsed && <span className="ml-3 text-sm">{item.label}</span>}
                   </>
                 )}
-              </NavLink>
+              </FocusableNavItem>
             ))}
           </div>
         </nav>
@@ -324,8 +430,8 @@ const Sidebar = () => {
           <button
             onClick={handleAddPlaylist}
             className={`
-              w-full flex items-center px-3 py-2 rounded-lg transition-all duration-200
-              text-red-500 hover:text-red-400 hover:bg-zinc-800/50
+              w-full flex items-center px-3 py-2 rounded-lg border border-transparent transition-all duration-200
+              text-red-400 hover:border-red-500 hover:bg-zinc-800/90 hover:text-white hover:scale-[1.02] hover:shadow-lg hover:shadow-red-500/10
               ${isCollapsed ? 'justify-center' : ''}
               focus:outline-none focus:ring-2 focus:ring-red-500
             `}
@@ -338,14 +444,15 @@ const Sidebar = () => {
         {}
         <div className="px-3 py-4 border-t border-zinc-800">
           {bottomItems.map((item) => (
-            <NavLink
+            <FocusableNavItem
               key={typeof item.to === 'string' ? item.to : `${item.to.pathname}${item.to.hash || ''}`}
+              itemId={`sidebar-item-${typeof item.to === 'string' ? item.to : `${item.to.pathname}${item.to.hash || ''}`}`}
               to={item.to}
               className={({ isActive }) => `
-                relative flex items-center px-3 py-2 rounded-lg transition-all duration-200 overflow-visible
+                relative flex items-center px-3 py-2 rounded-lg border border-transparent transition-all duration-200 overflow-visible
                 ${isActive 
-                  ? 'bg-red-600 text-white shadow-lg shadow-red-600/25' 
-                  : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                  ? 'border-red-500 bg-red-600 text-white scale-[1.02] shadow-xl shadow-red-500/20' 
+                  : 'text-zinc-400 hover:border-red-500 hover:bg-zinc-800/90 hover:text-white hover:scale-[1.02] hover:shadow-lg hover:shadow-red-500/10'
                 }
                 ${isCollapsed ? 'justify-center' : ''}
               `}
@@ -381,7 +488,7 @@ const Sidebar = () => {
                   {!isCollapsed && <span className="ml-3 text-sm">{item.label}</span>}
                 </>
               )}
-            </NavLink>
+            </FocusableNavItem>
           ))}
         </div>
       </motion.aside>
@@ -399,4 +506,3 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
-

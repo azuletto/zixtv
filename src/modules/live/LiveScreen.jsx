@@ -3,6 +3,7 @@ import React, { useState, useMemo, lazy, Suspense, useCallback, useEffect, useRe
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usePlaylist } from '../../shared/hooks/usePlaylist';
+import { useFocusable } from '../../shared/hooks/useFocusable';
 import { 
   ViewGridIcon, 
   ViewListIcon,
@@ -82,6 +83,10 @@ const CustomDropdown = ({ categories, selectedCategory, onSelect, totalChannels,
   const dropdownRef = useRef(null);
   const selectedItemRef = useRef(null);
   const menuRef = useRef(null);
+  const { ref: dropdownToggleRef, isFocused: isDropdownFocused } = useFocusable('live-category-dropdown-toggle', {
+    group: 'live-controls',
+    onSelect: () => setIsOpen((prev) => !prev),
+  });
 
   
   useEffect(() => {
@@ -131,8 +136,9 @@ const CustomDropdown = ({ categories, selectedCategory, onSelect, totalChannels,
   return (
     <div className="relative" ref={dropdownRef}>
       <button
+        ref={dropdownToggleRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full sm:w-80 flex items-center justify-between gap-3 bg-zinc-900 hover:border-red-500 border border-zinc-700 rounded-lg px-4 py-2 transition-all duration-200 group"
+        className={`home-control home-control-hover group w-full justify-between gap-3 px-4 py-2 text-left sm:w-80 ${isDropdownFocused ? 'home-control-active' : ''}`}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div className="p-1 rounded-md bg-red-600/20 text-red-500">
@@ -163,7 +169,7 @@ const CustomDropdown = ({ categories, selectedCategory, onSelect, totalChannels,
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl overflow-hidden z-50"
+            className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/95 shadow-xl backdrop-blur-sm"
           >
             <div className="max-h-80 overflow-y-auto">
               <button
@@ -174,8 +180,8 @@ const CustomDropdown = ({ categories, selectedCategory, onSelect, totalChannels,
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors ${
                   selectedCategory === 'all'
-                    ? 'bg-red-600/20 text-red-500'
-                    : 'hover:bg-zinc-800 hover:border-l-2 hover:border-red-500 text-gray-300'
+                    ? 'bg-zinc-800 text-red-400'
+                    : 'text-gray-300 hover:bg-zinc-800 hover:text-white'
                 }`}
               >
                 <div className="p-1 rounded-md bg-red-600/20 text-red-500">
@@ -204,8 +210,8 @@ const CustomDropdown = ({ categories, selectedCategory, onSelect, totalChannels,
                     }}
                     className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors ${
                       selectedCategory === category
-                        ? 'bg-red-600/20 text-red-500'
-                        : 'hover:bg-zinc-800 hover:border-l-2 hover:border-red-500 text-gray-300'
+                        ? 'bg-zinc-800 text-red-400'
+                        : 'text-gray-300 hover:bg-zinc-800 hover:text-white'
                     }`}
                   >
                     <div className="p-1 rounded-md bg-zinc-800 text-gray-400">
@@ -415,6 +421,32 @@ const LiveScreen = () => {
     }
   }, []);
 
+  const { ref: liveSearchFocusableRef, isFocused: isLiveSearchFocused } = useFocusable('live-search-input', {
+    group: 'live-controls',
+    onSelect: () => searchInputRef.current?.focus(),
+  });
+
+  const { ref: liveSearchClearRef, isFocused: isLiveSearchClearFocused } = useFocusable('live-search-clear', {
+    group: 'live-controls',
+    onSelect: handleClearSearch,
+  });
+
+  const { ref: liveViewListRef, isFocused: isLiveViewListFocused } = useFocusable('live-view-list', {
+    group: 'live-controls',
+    onSelect: () => {
+      setViewMode('list');
+      localStorage.setItem('liveViewMode', 'list');
+    },
+  });
+
+  const { ref: liveViewGridRef, isFocused: isLiveViewGridFocused } = useFocusable('live-view-grid', {
+    group: 'live-controls',
+    onSelect: () => {
+      setViewMode('grid');
+      localStorage.setItem('liveViewMode', 'grid');
+    },
+  });
+
   
   useEffect(() => {
     const handleKeyPress = (e) => {
@@ -507,7 +539,10 @@ const LiveScreen = () => {
               <div className="relative">
                 <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input
-                  ref={searchInputRef}
+                  ref={(node) => {
+                    searchInputRef.current = node;
+                    liveSearchFocusableRef.current = node;
+                  }}
                   type="text"
                   placeholder="Buscar canal..."
                   value={searchQuery}
@@ -515,12 +550,13 @@ const LiveScreen = () => {
                     setSearchQuery(e.target.value);
                     setSelectedCategory('all');
                   }}
-                  className="w-64 bg-zinc-900 text-white text-sm rounded-lg pl-9 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 border border-zinc-700 transition-all duration-200 focus:w-80"
+                  className={`home-input home-input-hover w-64 pl-9 pr-8 py-2 text-sm transition-all duration-200 focus:w-80 ${isLiveSearchFocused ? 'border-red-500 ring-2 ring-red-500/20' : ''}`}
                 />
                 {searchQuery && (
                   <button
+                    ref={liveSearchClearRef}
                     onClick={handleClearSearch}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                    className={`absolute right-2 top-1/2 transform -translate-y-1/2 transition-colors ${isLiveSearchClearFocused ? 'text-red-500' : 'text-gray-500 hover:text-white'}`}
                   >
                     <XIcon className="w-4 h-4" />
                   </button>
@@ -528,30 +564,36 @@ const LiveScreen = () => {
               </div>
 
               {}
-              <div className="flex bg-zinc-900 rounded-lg p-1 gap-1 border border-zinc-700">
+              <div className="flex gap-1 rounded-lg border border-zinc-800 bg-zinc-900/80 p-1 backdrop-blur-sm">
                 <button
+                  ref={liveViewListRef}
                   onClick={() => {
                     setViewMode('list');
                     localStorage.setItem('liveViewMode', 'list');
                   }}
                   className={`p-1.5 rounded-md transition-all duration-200 ${
-                    viewMode === 'list' 
-                      ? 'bg-red-600 text-white shadow-lg shadow-red-600/25' 
-                      : 'text-gray-400 hover:text-white hover:bg-zinc-800'
+                    viewMode === 'list'
+                      ? 'home-control-active'
+                      : isLiveViewListFocused
+                        ? 'home-control-active'
+                        : 'text-gray-400 hover:bg-zinc-800 hover:text-white'
                   }`}
                   title="Modo lista"
                 >
                   <ViewListIcon className="w-4 h-4" />
                 </button>
                 <button
+                  ref={liveViewGridRef}
                   onClick={() => {
                     setViewMode('grid');
                     localStorage.setItem('liveViewMode', 'grid');
                   }}
                   className={`p-1.5 rounded-md transition-all duration-200 ${
-                    viewMode === 'grid' 
-                      ? 'bg-red-600 text-white shadow-lg shadow-red-600/25' 
-                      : 'text-gray-400 hover:text-white hover:bg-zinc-800'
+                    viewMode === 'grid'
+                      ? 'home-control-active'
+                      : isLiveViewGridFocused
+                        ? 'home-control-active'
+                        : 'text-gray-400 hover:bg-zinc-800 hover:text-white'
                   }`}
                   title="Modo grade"
                 >
@@ -680,7 +722,7 @@ const LiveScreen = () => {
                   <button
                     onClick={prevPage}
                     disabled={currentPage === 1}
-                    className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="home-control home-control-hover h-9 w-9 px-0 py-0 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <ChevronLeftIcon className="w-5 h-5" />
                   </button>
@@ -706,8 +748,8 @@ const LiveScreen = () => {
                           onClick={() => goToPage(page)}
                           className={`min-w-[36px] h-9 rounded-lg font-medium transition-all ${
                             currentPage === page
-                              ? 'bg-red-600 text-white'
-                              : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-red-600'
+                              ? 'home-control home-control-active'
+                              : 'home-control home-control-hover'
                           }`}
                         >
                           {page}
@@ -719,7 +761,7 @@ const LiveScreen = () => {
                   <button
                     onClick={nextPage}
                     disabled={currentPage === totalPages}
-                    className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="home-control home-control-hover h-9 w-9 px-0 py-0 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <ChevronRightIcon className="w-5 h-5" />
                   </button>
@@ -768,20 +810,30 @@ const LiveScreen = () => {
 const ChannelCard = React.memo(({ channel, onSelect }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const channelId = channel?.id || channel?.url || channel?.name;
+  const { ref: channelRef, isFocused } = useFocusable(`live-channel-card-${channelId}`, {
+    group: 'live-channels',
+    onSelect: () => onSelect(channel),
+  });
+  const isActive = isHovered || isFocused;
   
   return (
     <div
+      ref={channelRef}
       onClick={() => onSelect(channel)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="group cursor-pointer"
+      className={`group cursor-pointer transition-all duration-200 ${
+        isActive ? 'scale-105' : 'hover:scale-105'
+      }`}
     >
       <div 
-        className="relative w-full bg-zinc-900 rounded-md overflow-hidden transition-all duration-200 flex items-center justify-center"
-        style={{ 
-          aspectRatio: '1/1',
-          border: isHovered ? '1.5px solid #ef4444' : '1.5px solid transparent'
-        }}
+        className={`relative flex w-full items-center justify-center overflow-hidden rounded-lg border-2 bg-zinc-900 transition-all duration-200 ${
+          isActive
+            ? 'border-red-500 shadow-xl shadow-red-500/20'
+            : 'border-zinc-800 hover:border-red-500 hover:shadow-xl hover:shadow-red-500/10'
+        }`}
+        style={{ aspectRatio: '1/1' }}
       >
         <div className="w-3/5 h-3/5">
           {!imgError && (channel.logo || channel.tvgLogo) ? (
@@ -804,7 +856,7 @@ const ChannelCard = React.memo(({ channel, onSelect }) => {
           </span>
         </div>
       </div>
-      <p className="text-xs text-gray-400 mt-1 truncate text-center group-hover:text-white transition-colors">
+      <p className="mt-1 truncate text-center text-xs text-gray-400 transition-colors group-hover:text-white">
         {channel.name}
       </p>
     </div>
@@ -814,20 +866,29 @@ const ChannelCard = React.memo(({ channel, onSelect }) => {
 const ChannelListItem = React.memo(({ channel, onSelect }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const channelId = channel?.id || channel?.url || channel?.name;
+  const { ref: channelRef, isFocused } = useFocusable(`live-channel-list-${channelId}`, {
+    group: 'live-channels',
+    onSelect: () => onSelect(channel),
+  });
+  const isActive = isHovered || isFocused;
   
   return (
     <div
+      ref={channelRef}
       onClick={() => onSelect(channel)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200"
+      className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 bg-zinc-900 p-3 transition-all duration-200 ${
+        isActive
+          ? 'border-red-500 scale-[1.02] shadow-xl shadow-red-500/20'
+          : 'border-zinc-800 hover:border-red-500 hover:scale-[1.02] hover:shadow-xl hover:shadow-red-500/10'
+      }`}
       style={{ 
-        backgroundColor: isHovered ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
-        border: isHovered ? '1px solid #ef4444' : '1px solid transparent',
-        transform: isHovered ? 'translateX(4px)' : 'translateX(0)'
+        backgroundColor: isActive ? 'rgba(24, 24, 27, 0.92)' : undefined
       }}
     >
-      <div className="w-12 h-12 bg-zinc-900 rounded-xl overflow-hidden flex-shrink-0 transition-all duration-200 flex items-center justify-center" style={{ transform: isHovered ? 'scale(1.05)' : 'scale(1)' }}>
+      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-zinc-900 transition-all duration-200" style={{ transform: isActive ? 'scale(1.05)' : 'scale(1)' }}>
         <div className="w-9 h-9">
           {!imgError && (channel.logo || channel.tvgLogo) ? (
             <img
@@ -847,7 +908,7 @@ const ChannelListItem = React.memo(({ channel, onSelect }) => {
       
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm text-white font-medium truncate transition-colors" style={{ color: isHovered ? '#ef4444' : '#ffffff' }}>
+          <h3 className="truncate text-sm font-medium text-white transition-colors" style={{ color: isActive ? '#f4f4f5' : '#ffffff' }}>
             {channel.name}
           </h3>
           <span className="text-[10px] font-bold bg-red-600 text-white px-1.5 py-0.5 rounded flex-shrink-0">
@@ -861,10 +922,7 @@ const ChannelListItem = React.memo(({ channel, onSelect }) => {
       
       <div 
         className="text-red-500 transition-all duration-200"
-        style={{ 
-          opacity: isHovered ? 1 : 0,
-          transform: isHovered ? 'translateX(0)' : 'translateX(-8px)'
-        }}
+        style={{ opacity: isActive ? 1 : 0 }}
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -875,4 +933,3 @@ const ChannelListItem = React.memo(({ channel, onSelect }) => {
 });
 
 export default LiveScreen;
-

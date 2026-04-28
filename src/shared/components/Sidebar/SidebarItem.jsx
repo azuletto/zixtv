@@ -2,6 +2,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useFocusable } from '../../hooks/useFocusable';
 
 const SidebarItem = ({ 
   icon: Icon, 
@@ -15,20 +16,35 @@ const SidebarItem = ({
   highlight = false
 }) => {
   const [isHovered, setIsHovered] = React.useState(false);
+  const itemRef = React.useRef(null);
+
+  // Integração com navegação por teclado
+  const uniqueId = `sidebar-item-${to || label}`;
+  const { isFocused } = useFocusable(uniqueId, {
+    group: 'sidebar-menu',
+    onSelect: () => {
+      if (itemRef.current) {
+        itemRef.current.click();
+      }
+    },
+  });
 
   const content = (
     <motion.div
+      ref={itemRef}
       whileHover={{ x: isCollapsed ? 0 : 4 }}
       whileTap={{ scale: 0.97 }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       className={`
-        flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 relative cursor-pointer
+        sidebar-item flex items-center px-3 py-2.5 rounded-xl border border-transparent transition-all duration-200 relative cursor-pointer
         ${active 
-          ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/10' 
+          ? 'border-red-500 bg-red-600 text-white scale-[1.02] shadow-xl shadow-red-500/20' 
           : highlight
-            ? 'bg-gradient-to-r from-red-600/10 to-transparent text-red-500 border border-red-600/20 hover:border-red-600/40'
-            : 'text-zinc-500 hover:text-white hover:bg-zinc-800/40'
+            ? 'text-red-400 hover:border-red-500 hover:bg-zinc-800/90 hover:text-white hover:scale-[1.02] hover:shadow-lg hover:shadow-red-500/10'
+            : isFocused
+              ? 'border-red-500 bg-zinc-800/90 text-white scale-[1.02] shadow-lg shadow-red-500/10'
+              : 'text-zinc-500 hover:border-red-500 hover:bg-zinc-800/90 hover:text-white hover:scale-[1.02] hover:shadow-lg hover:shadow-red-500/10'
         }
         ${isCollapsed ? 'justify-center' : ''}
       `}

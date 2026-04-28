@@ -111,7 +111,7 @@ const AboutScreen = () => {
               </div>
               <button
                 onClick={handleClose}
-                className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors text-zinc-300 hover:text-white"
+                className="home-control home-control-hover gap-2 px-4 py-2 text-zinc-300"
               >
                 <X className="w-4 h-4" />
                 <span className="text-sm">Fechar</span>
@@ -158,7 +158,7 @@ const AboutScreen = () => {
                   {section.title === 'Sobre o ZixTV' ? (
                     <>
                       {section.content}
-                      <div className="mt-6 pt-4 pl-4 border-l-2 border-red-600/30 bg-red-600/5 rounded-r-lg p-4">
+                      <div className="home-panel mt-6 rounded-lg p-4">
                         <p className="text-white font-medium mb-2 flex items-center gap-2">
                           <Play className="w-4 h-4 text-red-500" />
                           {section.subSection.title}
@@ -217,7 +217,7 @@ const AboutScreen = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.2 }}
-            className="mt-10 rounded-xl border border-red-600/30 bg-gradient-to-r from-red-600/10 to-zinc-900 p-6"
+            className="home-panel mt-10 p-6"
           >
             <div className="flex items-center gap-3 mb-3">
               <div className="text-red-500">
@@ -229,7 +229,7 @@ const AboutScreen = () => {
               Se o ZixTV te ajuda no dia a dia, você pode apoiar com qualquer valor via PIX.
             </p>
 
-            <div className="rounded-lg border border-zinc-700 bg-zinc-900/80 p-4">
+            <div className="home-card-shell p-4">
               <div className="flex items-center gap-2 text-zinc-400 text-xs uppercase tracking-wider mb-2">
                 <QrCode className="w-4 h-4" />
                 Chave PIX
@@ -241,7 +241,7 @@ const AboutScreen = () => {
                 <button
                   type="button"
                   onClick={handleCopyPix}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-500/40 bg-red-600/90 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600"
                 >
                   {pixCopied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   {pixCopied ? 'Copiado' : 'Copiar chave'}

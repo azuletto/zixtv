@@ -1,7 +1,7 @@
-
 import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { PlayIcon, PlusIcon, ThumbUpIcon } from '/src/shared/icons/heroiconsOutlineCompat';
 import { useUIStore } from '../../../app/store/uiStore';
+import { useFocusable } from '../../hooks/useFocusable';
 import { resolveMediaUrl } from '../../../core/services/network/proxy';
 
 const FALLBACK_IMAGE = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'450\' viewBox=\'0 0 300 450\'%3E%3Crect width=\'300\' height=\'450\' fill=\'%2318181b\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'Arial\' font-size=\'14\' fill=\'%23666666\'%3ESem Imagem%3C/text%3E%3C/svg%3E';
@@ -10,6 +10,12 @@ const MediaCard = ({ item, type, imageFit = 'cover', imageScale = 0.94, imagePad
   const [isHovered, setIsHovered] = useState(false);
   const [localImageError, setLocalImageError] = useState(false);
   const imgRef = useRef(null);
+
+  // Integração com navegação por teclado
+  const uniqueId = useMemo(() => `media-card-${item?.id || item?.name || item?.title || Math.random()}`, [item?.id, item?.name, item?.title]);
+  const { ref: focusRef, isFocused } = useFocusable(uniqueId, {
+    group: 'media-cards',
+  });
 
   const normalizedItem = useMemo(() => ({
     ...item,
@@ -74,6 +80,7 @@ const MediaCard = ({ item, type, imageFit = 'cover', imageScale = 0.94, imagePad
   const isEntertainment = type === 'movies' || type === 'series';
   const isTMDBItem = type === 'tmdb';
   const isLive = type === 'live';
+  const isActive = isHovered || isFocused;
 
   const imageUrl = localImageError
     ? FALLBACK_IMAGE
@@ -81,7 +88,12 @@ const MediaCard = ({ item, type, imageFit = 'cover', imageScale = 0.94, imagePad
 
   return (
     <div
-      className="relative rounded-lg overflow-hidden cursor-pointer bg-zinc-900 border border-zinc-800 transition-all duration-200 hover:scale-105 hover:border-red-500 hover:shadow-xl hover:shadow-red-500/10"
+      ref={focusRef}
+      className={`media-card relative rounded-lg overflow-hidden cursor-pointer bg-zinc-900 border-2 transition-all duration-200 ${
+        isActive 
+          ? 'border-red-500 scale-105 shadow-xl shadow-red-500/20' 
+          : 'border-zinc-800 hover:border-red-500 hover:scale-105 hover:shadow-xl hover:shadow-red-500/10'
+      }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleClick}
@@ -105,7 +117,7 @@ const MediaCard = ({ item, type, imageFit = 'cover', imageScale = 0.94, imagePad
           loading="lazy"
         />
 
-        <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity duration-200 ${isHovered ? 'opacity-100' : 'opacity-0'}`} />
+        <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity duration-200 ${isActive ? 'opacity-100' : 'opacity-0'}`} />
 
         {isLive && (
           <div className="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center z-10 shadow-lg">
@@ -128,7 +140,7 @@ const MediaCard = ({ item, type, imageFit = 'cover', imageScale = 0.94, imagePad
           </div>
         )}
 
-        <div className={`absolute inset-x-0 bottom-0 p-3 flex flex-col z-10 transition-all duration-200 ${isHovered ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'}`}>
+        <div className={`absolute inset-x-0 bottom-0 p-3 flex flex-col z-10 transition-all duration-200 ${isActive ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-80'}`}>
           <h3 className="text-white font-bold text-sm mb-1 line-clamp-2 leading-tight">
             {title}
           </h3>
@@ -174,4 +186,3 @@ const MediaCard = ({ item, type, imageFit = 'cover', imageScale = 0.94, imagePad
 };
 
 export default React.memo(MediaCard);
-

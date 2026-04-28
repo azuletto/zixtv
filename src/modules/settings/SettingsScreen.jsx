@@ -98,7 +98,7 @@ const SettingsDropdown = ({ options, value, onChange, disabled = false }) => {
           left: `${menuPosition.left}px`,
           width: `${menuPosition.width}px`
         }}
-        className="z-[9999] max-h-60 overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-lg"
+        className="z-[9999] max-h-60 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-900/95 py-1 shadow-lg backdrop-blur-sm"
       >
         {options.map((option) => (
           <button
@@ -110,8 +110,8 @@ const SettingsDropdown = ({ options, value, onChange, disabled = false }) => {
             }}
             className={`w-full px-3 py-2 text-left text-sm transition-colors ${
               option.value === value
-                ? 'bg-zinc-800 text-red-500'
-                : 'text-zinc-300 hover:bg-zinc-800'
+                ? 'bg-zinc-800 text-red-400'
+                : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
             }`}
           >
             {option.label}
@@ -132,7 +132,7 @@ const SettingsDropdown = ({ options, value, onChange, disabled = false }) => {
           className={`w-full flex items-center justify-between gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
             disabled
               ? 'cursor-not-allowed border-zinc-800 bg-zinc-900 text-zinc-500'
-              : 'border-zinc-700 bg-zinc-800 text-white hover:border-red-500'
+              : 'border-zinc-800 bg-zinc-900 text-white hover:border-red-500/60 hover:bg-zinc-800/90'
           }`}
         >
           <span className="truncate">{selected?.label || ''}</span>
@@ -282,7 +282,7 @@ const SettingsScreen = () => {
             <button
               type="button"
               onClick={() => navigate('/about')}
-              className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-red-500 transition-colors"
+              className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 transition-colors hover:text-red-400"
             >
               <span>Sobre a ZixTV</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -307,7 +307,7 @@ const SettingsScreen = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden hover:border-zinc-700 transition-colors"
+            className="home-panel home-panel-hover overflow-hidden"
           >
             <div className="p-5">
               <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
@@ -354,7 +354,7 @@ const SettingsScreen = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden hover:border-zinc-700 transition-colors"
+            className="home-panel home-panel-hover overflow-hidden"
           >
             <div className="p-5">
               <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
@@ -454,7 +454,7 @@ const SettingsScreen = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden hover:border-zinc-700 transition-colors"
+            className="home-panel home-panel-hover overflow-hidden"
           >
             <div className="p-5">
               <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
@@ -480,7 +480,7 @@ const SettingsScreen = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden hover:border-zinc-700 transition-colors"
+            className="home-panel home-panel-hover overflow-hidden"
           >
             <div className="p-5">
               <h2 className="text-lg font-semibold text-white mb-4">Playlists</h2>
@@ -526,7 +526,7 @@ const SettingsScreen = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden hover:border-zinc-700 transition-colors"
+            className="home-panel home-panel-hover overflow-hidden"
           >
             <div className="p-5">
               <h2 className="text-lg font-semibold text-white mb-4">Backup</h2>
@@ -534,13 +534,13 @@ const SettingsScreen = () => {
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={handleExport}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-red-500/40 bg-red-600/90 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-600"
                 >
                   <DownloadIcon className="w-4 h-4" />
                   Exportar Dados
                 </button>
                 
-                <label className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                <label className="home-control home-control-hover flex-1 cursor-pointer justify-center gap-2 py-2.5 text-sm font-medium text-white">
                   <UploadIcon className="w-4 h-4" />
                   Importar Dados
                   <input
@@ -554,7 +554,7 @@ const SettingsScreen = () => {
 
               <button
                 onClick={handleClearHistory}
-                className="mt-3 w-full bg-zinc-800 hover:bg-zinc-700 text-red-500 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                className="home-control home-control-danger home-control-danger-hover mt-3 w-full justify-center py-2.5 text-sm font-medium"
               >
                 Limpar Histórico
               </button>
@@ -597,4 +597,3 @@ const SettingsScreen = () => {
 };
 
 export default SettingsScreen;
-
