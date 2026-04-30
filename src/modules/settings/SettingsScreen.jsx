@@ -1,6 +1,7 @@
 
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useFocusable } from '../../shared/hooks/useFocusable';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -33,11 +34,17 @@ const ComingSoonHint = () => (
   </span>
 );
 
-const SettingsDropdown = ({ options, value, onChange, disabled = false }) => {
+const SettingsDropdown = ({ options, value, onChange, disabled = false, id }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState(null);
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
+
+  const idRef = useRef(id || `settings-dropdown-${Math.random().toString(36).slice(2,9)}`);
+  const { ref: triggerFocusRef, isFocused: isTriggerFocused } = useFocusable(idRef.current, {
+    onSelect: () => setIsOpen((prev) => !prev),
+    onToggle: () => setIsOpen((prev) => !prev),
+  });
 
   const selected = options.find((option) => option.value === value) || options[0];
 
@@ -124,8 +131,12 @@ const SettingsDropdown = ({ options, value, onChange, disabled = false }) => {
 
   return (
     <div className="relative min-w-[150px]">
-      <div ref={triggerRef} className="relative">
+      <div className="relative">
         <button
+          ref={(node) => {
+            triggerRef.current = node;
+            triggerFocusRef.current = node;
+          }}
           type="button"
           disabled={disabled}
           onClick={() => setIsOpen((prev) => !prev)}
@@ -133,7 +144,7 @@ const SettingsDropdown = ({ options, value, onChange, disabled = false }) => {
             disabled
               ? 'cursor-not-allowed border-zinc-800 bg-zinc-900 text-zinc-500'
               : 'border-zinc-800 bg-zinc-900 text-white hover:border-red-500/60 hover:bg-zinc-800/90'
-          }`}
+          } ${isTriggerFocused ? 'ring-2 ring-inset ring-red-500/60' : ''}`}
         >
           <span className="truncate">{selected?.label || ''}</span>
           <svg className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">

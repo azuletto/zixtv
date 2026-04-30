@@ -81,8 +81,8 @@ const LazyImage = ({ src, alt, className, onError }) => {
 const CustomDropdown = ({ categories, selectedCategory, onSelect, totalChannels, channelsByCategory }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const selectedItemRef = useRef(null);
   const menuRef = useRef(null);
+  const categoryItemRefs = useRef({});
   const { ref: dropdownToggleRef, isFocused: isDropdownFocused } = useFocusable('live-category-dropdown-toggle', {
     group: 'live-controls',
     onSelect: () => setIsOpen((prev) => !prev),
@@ -101,15 +101,72 @@ const CustomDropdown = ({ categories, selectedCategory, onSelect, totalChannels,
 
   
   useEffect(() => {
-    if (isOpen && selectedItemRef.current && menuRef.current) {
-      setTimeout(() => {
-        selectedItemRef.current.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        });
-      }, 50);
+    if (isOpen && menuRef.current) {
+      const selectedElement = categoryItemRefs.current[selectedCategory];
+      if (selectedElement) {
+        setTimeout(() => {
+          selectedElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+        }, 50);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, selectedCategory]);
+
+  // Auto-scroll dropdown when selectedCategory changes
+  useEffect(() => {
+    if (isOpen && selectedCategory) {
+      const categoryElement = categoryItemRefs.current[selectedCategory];
+      if (categoryElement && menuRef.current) {
+        categoryElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [isOpen, selectedCategory]);
+
+  // Handle category dropdown keyboard navigation globally
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleCategoryKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsOpen(false);
+        return;
+      }
+
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+        onSelect(selectedCategory);
+        setIsOpen(false);
+        return;
+      }
+
+      const categoryList = ['all', ...Array.from(categories)];
+      const currentIndex = categoryList.indexOf(selectedCategory);
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        const nextIndex = (currentIndex + 1) % categoryList.length;
+        onSelect(categoryList[nextIndex]);
+        return;
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        const prevIndex = (currentIndex - 1 + categoryList.length) % categoryList.length;
+        onSelect(categoryList[prevIndex]);
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleCategoryKeyDown, true);
+    return () => document.removeEventListener('keydown', handleCategoryKeyDown, true);
+  }, [isOpen, selectedCategory, categories, onSelect]);
 
   
   const getCategoryIcon = (categoryName) => {
@@ -173,7 +230,7 @@ const CustomDropdown = ({ categories, selectedCategory, onSelect, totalChannels,
           >
             <div className="max-h-80 overflow-y-auto">
               <button
-                ref={selectedCategory === 'all' ? selectedItemRef : null}
+                ref={el => categoryItemRefs.current['all'] = el}
                 onClick={() => {
                   onSelect('all');
                   setIsOpen(false);
@@ -203,7 +260,7 @@ const CustomDropdown = ({ categories, selectedCategory, onSelect, totalChannels,
                 return (
                   <button
                     key={category}
-                    ref={selectedCategory === category ? selectedItemRef : null}
+                    ref={el => categoryItemRefs.current[category] = el}
                     onClick={() => {
                       onSelect(category);
                       setIsOpen(false);

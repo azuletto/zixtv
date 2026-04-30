@@ -34,6 +34,54 @@ import {
 import AddPlaylistModal from '../Modal/AddPlaylistModal';
 import logoZixTV from '../../../assets/logo-zix-tv.png';
 
+// Extract PlaylistItem outside PlaylistDropdown to avoid re-creating component on every render
+const PlaylistItemButton = React.memo(({ playlist, index, selectedPlaylist, onSelect, setIsOpen, itemRefs }) => {
+  const itemId = `sidebar-playlist-item-${playlist.id}`;
+  const { ref, isFocused } = useFocusable(itemId, {
+    group: 'sidebar-menu',
+    onSelect: () => {
+      onSelect(playlist);
+      setIsOpen(false);
+    },
+  });
+
+  const setRef = useCallback((el) => {
+    try {
+      ref.current = el;
+    } catch (err) {
+      // ignore
+    }
+    itemRefs.current[index] = el;
+  }, [index, ref, itemRefs]);
+
+  return (
+    <button
+      ref={setRef}
+      onClick={() => {
+        onSelect(playlist);
+        setIsOpen(false);
+      }}
+      className={`w-full flex items-center gap-2 px-3 py-2.5 transition-colors ${
+        isFocused
+          ? 'bg-red-600/30 text-red-400 border-l-2 border-red-500'
+          : (selectedPlaylist?.id === playlist.id)
+            ? 'bg-zinc-800 text-red-400'
+            : 'text-gray-300 hover:bg-zinc-800 hover:text-white'
+      }`}
+    >
+      <div className="p-1 rounded-md bg-zinc-800 text-gray-400">
+        <FolderIcon className="w-4 h-4" />
+      </div>
+      <span className="flex-1 text-left text-sm truncate">{playlist.name}</span>
+      {selectedPlaylist?.id === playlist.id && (
+        <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+      )}
+    </button>
+  );
+});
+
+PlaylistItemButton.displayName = 'PlaylistItemButton';
+
 const PlaylistDropdown = ({ playlists, selectedPlaylist, onSelect, isCollapsed }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(
@@ -48,6 +96,9 @@ const PlaylistDropdown = ({ playlists, selectedPlaylist, onSelect, isCollapsed }
     onSelect: () => setIsOpen((prev) => !prev),
   });
 
+  // Register each playlist item as focusable so keyboard Enter can activate selection
+  const { setFocusedElement } = useNavigationStore();
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -59,65 +110,57 @@ const PlaylistDropdown = ({ playlists, selectedPlaylist, onSelect, isCollapsed }
   }, []);
 
   useEffect(() => {
-    if (isOpen && itemRefs.current[selectedIndex]) {
-      itemRefs.current[selectedIndex].scrollIntoView({
-        behavior: 'smooth',
-        block: 'center'
-      });
+    if (isOpen) {
+      // focus first (or previously selected) item for keyboard activation
+      const target = itemRefs.current[selectedIndex] || itemRefs.current[0];
+      if (target) {
+        setTimeout(() => {
+          target.focus();
+          setFocusedElement(`sidebar-playlist-item-${playlists[selectedIndex]?.id || playlists[0]?.id}`);
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
+      }
     }
-  }, [isOpen, selectedIndex]);
+  }, [isOpen, selectedIndex, setFocusedElement, playlists]);
 
-  const handleKeyDown = useCallback((e) => {
-    if (!isOpen) {
+  // Handle keyboard navigation when dropdown is open (global listener)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleDropdownKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsOpen(false);
+        return;
+      }
+
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        setIsOpen(true);
-      }
-      return;
-    }
-
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev + 1) % playlists.length);
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev - 1 + playlists.length) % playlists.length);
-        break;
-      case 'Enter':
-      case ' ':
-        e.preventDefault();
+        e.stopPropagation();
         onSelect(playlists[selectedIndex]);
         setIsOpen(false);
-        break;
-      case 'Escape':
+        return;
+      }
+
+      if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setIsOpen(false);
-        break;
-      default:
-        break;
-    }
+        e.stopPropagation();
+        setSelectedIndex((prev) => (prev + 1) % playlists.length);
+        return;
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        setSelectedIndex((prev) => (prev - 1 + playlists.length) % playlists.length);
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleDropdownKeyDown, true);
+    return () => document.removeEventListener('keydown', handleDropdownKeyDown, true);
   }, [isOpen, playlists, selectedIndex, onSelect]);
-
-  useEffect(() => {
-    const button = dropdownToggleRef.current;
-    if (button) {
-      button.addEventListener('keydown', handleKeyDown);
-      return () => button.removeEventListener('keydown', handleKeyDown);
-    }
-  }, [handleKeyDown]);
-
-  useEffect(() => {
-    if (isOpen && selectedItemRef.current && menuRef.current) {
-      setTimeout(() => {
-        selectedItemRef.current.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        });
-      }, 50);
-    }
-  }, [isOpen]);
 
   const getPlaylistIcon = () => {
     return <FolderIcon className="w-4 h-4" />;
@@ -151,35 +194,17 @@ const PlaylistDropdown = ({ playlists, selectedPlaylist, onSelect, isCollapsed }
               className="absolute left-full top-0 z-50 ml-2 min-w-[200px] overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/95 shadow-xl backdrop-blur-sm"
             >
               <div className="max-h-80 overflow-y-auto">
-                {playlists.map((playlist, index) => {
-                  const isSelected = selectedPlaylist?.id === playlist.id;
-                  const isHighlighted = index === selectedIndex;
-                  return (
-                    <button
-                      key={playlist.id}
-                      ref={(el) => (itemRefs.current[index] = el)}
-                      onClick={() => {
-                        onSelect(playlist);
-                        setIsOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-2 px-3 py-2.5 transition-colors ${
-                        isHighlighted
-                          ? 'bg-red-600/30 text-red-400 border-l-2 border-red-500'
-                          : isSelected
-                            ? 'bg-zinc-800 text-red-400'
-                            : 'text-gray-300 hover:bg-zinc-800 hover:text-white'
-                      }`}
-                    >
-                      <div className="p-1 rounded-md bg-zinc-800 text-gray-400">
-                        <FolderIcon className="w-4 h-4" />
-                      </div>
-                      <span className="flex-1 text-left text-sm truncate">{playlist.name}</span>
-                      {isSelected && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                      )}
-                    </button>
-                  );
-                })}
+                {playlists.map((playlist, index) => (
+                  <PlaylistItemButton
+                    key={playlist.id}
+                    playlist={playlist}
+                    index={index}
+                    selectedPlaylist={selectedPlaylist}
+                    onSelect={onSelect}
+                    setIsOpen={setIsOpen}
+                    itemRefs={itemRefs}
+                  />
+                ))}
               </div>
             </motion.div>
           )}
@@ -226,35 +251,17 @@ const PlaylistDropdown = ({ playlists, selectedPlaylist, onSelect, isCollapsed }
             className="absolute top-full left-0 right-0 mt-2 z-50 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/95 shadow-xl backdrop-blur-sm"
           >
             <div className="max-h-80 overflow-y-auto">
-              {playlists.map((playlist, index) => {
-                const isSelected = selectedPlaylist?.id === playlist.id;
-                const isHighlighted = index === selectedIndex;
-                return (
-                  <button
-                    key={playlist.id}
-                    ref={(el) => (itemRefs.current[index] = el)}
-                    onClick={() => {
-                      onSelect(playlist);
-                      setIsOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-2 px-3 py-2.5 transition-colors ${
-                      isHighlighted
-                        ? 'bg-red-600/30 text-red-400 border-l-2 border-red-500'
-                        : isSelected
-                          ? 'bg-zinc-800 text-red-400'
-                          : 'text-gray-300 hover:bg-zinc-800 hover:text-white'
-                    }`}
-                  >
-                    <div className="p-1 rounded-md bg-zinc-800 text-gray-400">
-                      <FolderIcon className="w-4 h-4" />
-                    </div>
-                    <span className="flex-1 text-left text-sm truncate">{playlist.name}</span>
-                    {isSelected && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                    )}
-                  </button>
-                );
-              })}
+              {playlists.map((playlist, index) => (
+                <PlaylistItemButton
+                  key={playlist.id}
+                  playlist={playlist}
+                  index={index}
+                  selectedPlaylist={selectedPlaylist}
+                  onSelect={onSelect}
+                  setIsOpen={setIsOpen}
+                  itemRefs={itemRefs}
+                />
+              ))}
             </div>
           </motion.div>
         )}
@@ -266,6 +273,14 @@ const PlaylistDropdown = ({ playlists, selectedPlaylist, onSelect, isCollapsed }
 const FocusableNavItem = ({ itemId, to, className, children }) => {
   const { ref, isFocused } = useFocusable(itemId, {
     group: 'sidebar-menu',
+    onSelect: () => {
+      // trigger native nav click when activated via keyboard
+      try {
+        ref.current?.click?.();
+      } catch (err) {
+        // ignore
+      }
+    },
   });
 
   return (
@@ -274,8 +289,19 @@ const FocusableNavItem = ({ itemId, to, className, children }) => {
       to={to}
       className={({ isActive }) => {
         const baseClass = typeof className === 'function' ? className({ isActive }) : className;
-        if (isFocused && !isActive) {
-          return `${baseClass} border-red-500 bg-zinc-800/90 text-white scale-[1.02] shadow-lg shadow-red-500/10`;
+        if (isActive) {
+          return `${baseClass} border-red-500 bg-red-600 text-white scale-[1.02] shadow-xl shadow-red-500/20`;
+        }
+        if (isFocused) {
+          // Remove hover: prefixes and apply classes directly for keyboard focus
+          const focusedClass = baseClass
+            .replace(/hover:border-red-500/g, 'border-red-500')
+            .replace(/hover:bg-zinc-800\/90/g, 'bg-zinc-800/90')
+            .replace(/hover:text-white/g, 'text-white')
+            .replace(/hover:scale-\[1\.02\]/g, 'scale-[1.02]')
+            .replace(/hover:shadow-lg/g, 'shadow-lg')
+            .replace(/hover:shadow-red-500\/10/g, 'shadow-red-500/10');
+          return focusedClass;
         }
         return baseClass;
       }}
@@ -322,6 +348,16 @@ const Sidebar = () => {
 
   const handleAddPlaylist = useCallback(() => setShowAddModal(true), []);
   
+  const { ref: toggleButtonRef, isFocused: isToggleFocused } = useFocusable('sidebar-toggle-button', {
+    group: 'sidebar-menu',
+    onSelect: () => {
+      setDonatePulseKey((prev) => prev + 1);
+      const nextCollapsed = !isCollapsed;
+      setIsCollapsed(nextCollapsed);
+      setSidebarOpen(!nextCollapsed);
+    },
+  });
+
   const handleToggleCollapse = useCallback(() => {
     setDonatePulseKey((prev) => prev + 1);
     const nextCollapsed = !isCollapsed;
@@ -351,8 +387,13 @@ const Sidebar = () => {
             
             <>
               <button
+                ref={toggleButtonRef}
                 onClick={handleToggleCollapse}
-                className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-zinc-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 mr-3"
+                className={`p-2 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 mr-3 ${
+                  isToggleFocused
+                    ? 'text-white bg-zinc-800'
+                    : 'text-gray-400 hover:text-white hover:bg-zinc-800'
+                }`}
                 title="Recolher menu"
                 aria-label="Recolher menu"
               >
@@ -367,8 +408,13 @@ const Sidebar = () => {
             
             <>
               <button
+                ref={toggleButtonRef}
                 onClick={handleToggleCollapse}
-                className="w-full flex justify-center p-2 rounded-lg text-gray-400 hover:text-white hover:bg-zinc-800 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500"
+                className={`w-full flex justify-center p-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 ${
+                  isToggleFocused
+                    ? 'text-white bg-zinc-800'
+                    : 'text-gray-400 hover:text-white hover:bg-zinc-800'
+                }`}
                 title="Expandir menu"
                 aria-label="Expandir menu"
               >

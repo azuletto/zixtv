@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { usePlaylistStore } from './store/playlistStore';
 import AppRouter from './routes/AppRouter';
 import { useKeyboardNavigation } from '../shared/hooks/useKeyboardNavigation';
-import KeyboardNavigationDebugger from '../shared/components/KeyboardNavigationDebugger';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,15 +27,12 @@ function KeyboardNavigationInitializer() {
 function App() {
   const { playlists } = usePlaylistStore();
   const hasPlaylist = playlists && playlists.length > 0;
-  const isDevelopment = import.meta.env.DEV;
-
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
         <KeyboardNavigationInitializer />
         {}
         <AppRouter />
-        {isDevelopment && <KeyboardNavigationDebugger />}
       </Router>
     </QueryClientProvider>
   );

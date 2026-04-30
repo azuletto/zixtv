@@ -143,6 +143,16 @@ const HeroBanner = ({ items = [], onPlay, onMoreInfo }) => {
     setHasImageError(false);
   }, [currentItem?.id, currentImage]);
 
+  // If no element is focused when the hero mounts, request focus for hero banner
+  useEffect(() => {
+    const current = useNavigationStore.getState?.()?.currentFocusedId;
+    if (!current) {
+      setTimeout(() => {
+        setFocusedElement('hero-banner');
+      }, 0);
+    }
+  }, [setFocusedElement]);
+
   useEffect(() => {
     if (safeItems.length <= 1) return undefined;
 

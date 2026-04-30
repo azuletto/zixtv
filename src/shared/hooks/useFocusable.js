@@ -39,12 +39,12 @@ export const useFocusable = (id, config = {}) => {
     return onNavigateRef.current?.(direction);
   }, []);
 
-  const {
-    registerElement,
-    unregisterElement,
-    currentFocusedId,
-    setFocusedElement,
-  } = useNavigationStore();
+  // Use getState for functions to avoid subscribing and changing identity on each render
+  const registerElement = useNavigationStore.getState().registerElement;
+  const unregisterElement = useNavigationStore.getState().unregisterElement;
+  const setFocusedElement = useNavigationStore.getState().setFocusedElement;
+  // Subscribe reactively only to the focused id
+  const currentFocusedId = useNavigationStore((s) => s.currentFocusedId);
 
   const isFocused = currentFocusedId === id;
 
@@ -68,7 +68,7 @@ export const useFocusable = (id, config = {}) => {
     return () => {
       unregisterElement(id);
     };
-  }, [id, group, disabled, registerElement, unregisterElement, stableOnSelect, stableOnToggle, stableOnNavigate]);
+  }, [id, group, disabled, stableOnSelect, stableOnToggle, stableOnNavigate]);
 
   // Efeitos visuais quando focado
   useEffect(() => {

@@ -243,9 +243,10 @@ export const useKeyboardNavigation = () => {
       e.preventDefault();
       const focused = focusableElements.find((el) => el.id === currentFocusedId);
       if (focused?.ref) {
-        focused.ref.click?.();
         if (focused.onSelect) {
           focused.onSelect();
+        } else {
+          focused.ref.click?.();
         }
       }
     }
@@ -256,6 +257,8 @@ export const useKeyboardNavigation = () => {
       if (focused?.ref) {
         if (focused.onToggle) {
           focused.onToggle();
+        } else if (focused.onSelect) {
+          focused.onSelect();
         } else {
           focused.ref.click?.();
         }

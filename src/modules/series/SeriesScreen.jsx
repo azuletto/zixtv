@@ -31,6 +31,8 @@ const SeriesScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const searchInputRef = useRef(null);
+  const categoryDropdownRef = useRef(null);
+  const categoryItemRefs = useRef({});
 
   const allSeries = getSeries() || [];
 
@@ -116,6 +118,62 @@ const SeriesScreen = () => {
     group: 'series-controls',
     onSelect: () => setShowCategoryDropdown((prev) => !prev),
   });
+
+  // Handle category dropdown keyboard navigation globally
+  useEffect(() => {
+    if (!showCategoryDropdown) return;
+
+    const handleCategoryKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowCategoryDropdown(false);
+        return;
+      }
+
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+        const currentCategory = categories[Math.max(0, categories.indexOf(filter))];
+        if (currentCategory) {
+          setFilter(currentCategory);
+          setShowCategoryDropdown(false);
+        }
+        return;
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        const currentIndex = categories.indexOf(filter);
+        const nextIndex = (currentIndex + 1) % categories.length;
+        setFilter(categories[nextIndex]);
+        return;
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        const currentIndex = categories.indexOf(filter);
+        const prevIndex = (currentIndex - 1 + categories.length) % categories.length;
+        setFilter(categories[prevIndex]);
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleCategoryKeyDown, true);
+    return () => document.removeEventListener('keydown', handleCategoryKeyDown, true);
+  }, [showCategoryDropdown, categories, filter, setFilter]);
+
+  // Auto-scroll dropdown when filter changes
+  useEffect(() => {
+    if (showCategoryDropdown && filter) {
+      const categoryElement = categoryItemRefs.current[filter];
+      if (categoryElement && categoryDropdownRef.current) {
+        categoryElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [showCategoryDropdown, filter]);
 
   useEffect(() => {
     const openSeries = location.state?.openSeries;
@@ -227,9 +285,10 @@ const SeriesScreen = () => {
                 {showCategoryDropdown && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShowCategoryDropdown(false)} />
-                    <div className="absolute right-0 z-20 mt-1 w-56 max-h-80 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-900/95 py-1 shadow-lg backdrop-blur-sm">
+                    <div ref={categoryDropdownRef} className="absolute right-0 z-20 mt-1 w-56 max-h-80 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-900/95 py-1 shadow-lg backdrop-blur-sm">
                       {categories.map((category) => (
                         <button
+                          ref={el => categoryItemRefs.current[category] = el}
                           key={category}
                           onClick={() => {
                             setFilter(category);
