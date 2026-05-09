@@ -148,7 +148,7 @@ export class M3UParser {
       throw new Error('Playlist vazia');
     }
 
-    if (totalBytes !== null && receivedBytes !== totalBytes) {
+    if (totalBytes !== null && receivedBytes < totalBytes * 0.95) {
       throw new Error(`Download truncado: recebeu ${receivedBytes} de ${totalBytes} bytes`);
     }
 

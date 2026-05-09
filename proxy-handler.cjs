@@ -132,10 +132,10 @@ const buildResponseHeaders = (upstreamRes, req) => {
 
   if (upstreamRes.headers['transfer-encoding']?.includes('chunk')) {
     delete headers['content-length'];
-     const isHttp2 = req.httpVersionMajor >= 2;
-     if (!isHttp2) {
-       headers['transfer-encoding'] = 'chunked';
-     }
+    const isHttp2 = req.httpVersionMajor >= 2;
+    if (!isHttp2) {
+      headers['transfer-encoding'] = 'chunked';
+    }
   }
 
   return headers;
