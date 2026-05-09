@@ -3,8 +3,8 @@ const https = require('https');
 const { URL } = require('url');
 const { pipeline } = require('stream');
 
-const HTTP_AGENT = new http.Agent({ keepAlive: true, keepAliveMsecs: 10000, maxSockets: 128, maxFreeSockets: 64 });
-const HTTPS_AGENT = new https.Agent({ keepAlive: true, keepAliveMsecs: 10000, maxSockets: 128, maxFreeSockets: 64 });
+const HTTP_AGENT = new http.Agent({ keepAlive: false, maxSockets: 128 });
+const HTTPS_AGENT = new https.Agent({ keepAlive: false, maxSockets: 128 });
 
 const parsePositiveInt = (value, fallback) => {
   const parsed = Number.parseInt(String(value || ''), 10);
@@ -98,7 +98,7 @@ const isTimeoutError = (err) => {
   return err?.code === 'ETIMEDOUT' || message.includes('timeout') || message.includes('timed out');
 };
 
-const buildResponseHeaders = (upstreamRes) => {
+const buildResponseHeaders = (upstreamRes, req) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -128,6 +128,14 @@ const buildResponseHeaders = (upstreamRes) => {
 
   if (!headers['accept-ranges']) {
     headers['accept-ranges'] = 'bytes';
+  }
+
+  if (upstreamRes.headers['transfer-encoding']?.includes('chunk')) {
+    delete headers['content-length'];
+     const isHttp2 = req.httpVersionMajor >= 2;
+     if (!isHttp2) {
+       headers['transfer-encoding'] = 'chunked';
+     }
   }
 
   return headers;
@@ -165,6 +173,7 @@ const requestUpstream = (targetUrl, req, res, context, redirectsLeft = 3, attemp
       protocol: targetUrl.protocol,
       hostname: targetUrl.hostname,
       port,
+      family: 4,
       method: 'GET',
       path: `${targetUrl.pathname}${targetUrl.search}`,
       headers: buildUpstreamHeaders(req, targetUrl, HEADER_PROFILES[profileIndex] || HEADER_PROFILES[0]),
@@ -225,8 +234,8 @@ const requestUpstream = (targetUrl, req, res, context, redirectsLeft = 3, attemp
 
       let headers;
       try {
-        headers = buildResponseHeaders(upstreamRes);
-      } catch (error) {
+        headers = buildResponseHeaders(upstreamRes, req);
+     } catch (error) {
         doneReject(new Error(`Failed to build headers: ${error.message}`));
         upstreamRes.destroy();
         upstreamReq.destroy();
