@@ -142,6 +142,117 @@ const getBestTokenOverlap = (aliasesA = [], aliasesB = []) => {
 
 const normalizeAliasLoose = (value = '') => getMeaningfulTokens(value).join(' ');
 
+const BRACKET_SEGMENT_PATTERN = /[\(\[\{]([^\)\]\}]+)[\)\]\}]/g;
+
+const removeBracketSegments = (value = '') => String(value || '').replace(BRACKET_SEGMENT_PATTERN, ' ');
+
+const normalizeExactTitleName = (value = '') => {
+  const normalized = normalizeLookupText(value)
+    .split(' ')
+    .filter((token) => token && !CONTENT_VARIANT_WORDS.has(token))
+    .join(' ')
+    .trim();
+
+  return normalized || '';
+};
+
+const extractTitleNameParts = (value = '') => {
+  const raw = String(value || '').trim();
+  if (!raw) return [];
+
+  const parts = [];
+  const baseName = normalizeExactTitleName(removeBracketSegments(raw));
+  if (baseName) parts.push(baseName);
+
+  for (const match of raw.matchAll(BRACKET_SEGMENT_PATTERN)) {
+    const bracketName = normalizeExactTitleName(match[1]);
+    if (bracketName) parts.push(bracketName);
+  }
+
+  return Array.from(new Set(parts));
+};
+
+const getApiTitleNames = (item = {}) => {
+  const names = [
+    item.title,
+    item.name,
+    item.original_title,
+    item.original_name,
+    item.displayTitle
+  ];
+
+  return Array.from(new Set(names.flatMap(extractTitleNameParts).filter(Boolean)));
+};
+
+const getPlaylistTitleNames = (item = {}) => {
+  const names = [
+    item.name,
+    item.title,
+    item.seriesName,
+    item.originalName,
+    item.originalTitle,
+    item.metadata?.title,
+    item.metadata?.name,
+    item.metadata?.seriesName,
+    item.tvg?.name
+  ];
+
+  return Array.from(new Set(names.flatMap(extractTitleNameParts).filter(Boolean)));
+};
+
+const scoreStrictNameMatch = (tmdbItem, indexedItem) => {
+  const apiNames = getApiTitleNames(tmdbItem);
+  const playlistNames = indexedItem.nameParts || getPlaylistTitleNames(indexedItem.item);
+
+  if (apiNames.length === 0 || playlistNames.length === 0) return 0;
+
+  let bestScore = 0;
+
+  for (const apiName of apiNames) {
+    const normalizedApiName = normalizeExactTitleName(apiName);
+    if (!normalizedApiName) continue;
+
+    for (const playlistName of playlistNames) {
+      const normalizedPlaylistName = normalizeExactTitleName(playlistName);
+      if (!normalizedPlaylistName) continue;
+
+      if (normalizedApiName === normalizedPlaylistName) {
+        return 100;
+      }
+
+      const apiTokens = getMeaningfulTokens(normalizedApiName);
+      const playlistTokens = getMeaningfulTokens(normalizedPlaylistName);
+      if (apiTokens.length === 0 || playlistTokens.length === 0) continue;
+
+      const apiTokenSet = new Set(apiTokens);
+      let overlap = 0;
+      for (const token of playlistTokens) {
+        if (apiTokenSet.has(token)) overlap += 1;
+      }
+
+      if (overlap === 0) continue;
+
+      const unionSize = new Set([...apiTokens, ...playlistTokens]).size;
+      const jaccardScore = unionSize > 0 ? (overlap / unionSize) * 100 : 0;
+
+      let prefixMatches = 0;
+      const maxPrefix = Math.min(apiTokens.length, playlistTokens.length);
+      while (prefixMatches < maxPrefix && apiTokens[prefixMatches] === playlistTokens[prefixMatches]) {
+        prefixMatches += 1;
+      }
+
+      const prefixScore = maxPrefix > 0 ? (prefixMatches / maxPrefix) * 100 : 0;
+      const blendedScore = Math.round((jaccardScore * 0.7) + (prefixScore * 0.3));
+
+      if (blendedScore > bestScore) {
+        bestScore = blendedScore;
+      }
+    }
+  }
+
+  return bestScore;
+};
+
 const CONTENT_VARIANT_WORDS = new Set([
   '4k', 'uhd', '1080p', '720p', '480p', '360p', 'hd', 'sd', 'full', 'audio', 'dual', 'dub', 'dublado',
   'legendado', 'leg', 'original', 'pt', 'br', 'brasil', 'nacional', 'bluray', 'blu', 'ray', 'remux', 'webdl', 'webrip', 'hdr'
@@ -276,8 +387,8 @@ const isStrongHeroCandidate = (item = {}, options = {}) => {
   const overviewLength = String(item.overview || '').trim().length;
 
   if (!title) return false;
-  if (!hasBackdrop && !hasPoster) return false;
   if (relaxed) return true;
+  if (!hasBackdrop && !hasPoster) return false;
   return hasBackdrop && overviewLength >= 20;
 };
 
@@ -396,15 +507,44 @@ const yieldToMainThread = () => new Promise((resolve) => {
   setTimeout(resolve, 0);
 });
 
-const HOME_INDEX_BATCH_SIZE = 150;
-const HOME_MAX_INDEX_ITEMS = 5000;
+const HOME_INDEX_BATCH_SIZE = 250;
+const HOME_MAX_INDEX_ITEMS = 8000;
 const HOME_SPOTLIGHT_CACHE_TTL = 10 * 60 * 1000;
 const homeSpotlightCache = new Map();
+
+const takeEvenlySpacedItems = (items = [], maxItems = HOME_MAX_INDEX_ITEMS) => {
+  const source = Array.isArray(items) ? items : [];
+  if (source.length <= maxItems) return source;
+
+  const result = [];
+  const step = source.length / maxItems;
+
+  for (let index = 0; index < maxItems; index++) {
+    result.push(source[Math.floor(index * step)]);
+  }
+
+  return result.filter(Boolean);
+};
+
+const getPlaylistContentUrl = (item = {}) => {
+  const directUrl = item.url || item.streamUrl || item.contentUrl || item.link;
+  if (directUrl) return directUrl;
+
+  if (Array.isArray(item.episodes)) {
+    const firstPlayableEpisode = item.episodes.find((episode) => episode?.url || episode?.streamUrl || episode?.contentUrl || episode?.link);
+    return firstPlayableEpisode?.url || firstPlayableEpisode?.streamUrl || firstPlayableEpisode?.contentUrl || firstPlayableEpisode?.link || null;
+  }
+
+  return null;
+};
+
+const hasPlaylistContentUrl = (item = {}) => Boolean(getPlaylistContentUrl(item));
 
 const createSearchIndexEntry = (item) => ({
   item,
   aliases: extractSearchAliases(item),
-  tmdbId: item.tmdbImageId || item.tvg?.tmdbImageId || extractTMDBIdFromUrl(item.tvg?.logo || item.logo)
+  nameParts: getPlaylistTitleNames(item),
+  tmdbId: item.tmdbImageId || item.tvg?.tmdbImageId || extractTMDBIdFromUrl(item.tvg?.logo || item.logo || item.posterUrl || item.backdropUrl)
 });
 
 const interleaveIndexes = (moviesIndex = [], seriesIndex = []) => {
@@ -505,12 +645,19 @@ const buildResolvedHomeItem = (playlistItem, tmdbItem = null) => {
   const posterUrl = playlistItem.tvg?.logo || playlistItem.logo || tmdbItem?.posterUrl || null;
   const backdropUrl = tmdbItem?.backdropUrl || tmdbItem?.posterUrl || playlistItem.tvg?.logo || playlistItem.logo || null;
 
+  // URL real do conteúdo vindo da playlist, quando existir
+  const streamUrl = getPlaylistContentUrl(playlistItem);
+
   return {
     ...playlistItem,
     name: title,
     title,
     posterUrl,
     backdropUrl,
+    url: streamUrl,
+    streamUrl,
+    contentUrl: streamUrl,
+    link: streamUrl,
     voteAverage: tmdbItem?.voteAverage ?? playlistItem.voteAverage,
     overview:
       tmdbItem?.overview ||
@@ -524,7 +671,10 @@ const buildResolvedHomeItem = (playlistItem, tmdbItem = null) => {
     year: tmdbItem?.year || playlistItem.year,
     prefetchedTMDBData: tmdbItem,
     tmdbData: tmdbItem,
-    source: tmdbItem ? 'tmdb-match' : 'playlist-fallback'
+    playlistItem: hasPlaylistContentUrl(playlistItem) ? playlistItem : null,
+    userItem: hasPlaylistContentUrl(playlistItem) ? playlistItem : null,
+    userType: normalizePlaylistType(playlistItem.type),
+    source: tmdbItem ? (hasPlaylistContentUrl(playlistItem) ? 'tmdb-match' : 'tmdb-only') : 'playlist-fallback'
   };
 };
 
@@ -586,31 +736,77 @@ const resolvePlaylistMatch = (tmdbItem, indexedItem) => {
   return containsStrong ? 86 : 0;
 };
 
-const resolveTmdbItemsWithPlaylist = ({ tmdbItems = [], indexes = [], minScore = 92 }) => {
+const resolveTmdbItemsWithPlaylist = ({ tmdbItems = [], indexes = [] }) => {
   const resolved = [];
-  const usedIds = new Set();
+  const usedPlaylistIds = new Set();
+  const usableIndexes = indexes.filter((indexedItem) => hasPlaylistContentUrl(indexedItem.item));
 
   for (const tmdbItem of tmdbItems) {
+    const tmdbImageId = tmdbItem.posterId || extractTMDBIdFromUrl(tmdbItem.posterUrl || tmdbItem.poster_path || tmdbItem.posterPath || tmdbItem.backdropUrl || '');
+
+    // Se não tem ID de imagem, não consegue linkar com segurança - usa TMDB only
+    if (!tmdbImageId) {
+      const tmdbOnlyItem = buildResolvedHomeItem(tmdbItem, tmdbItem);
+      if (tmdbOnlyItem) {
+        resolved.push(tmdbOnlyItem);
+      }
+      continue;
+    }
+
+    // Procura na playlist por ID matching
     let bestMatch = null;
-    let bestScore = 0;
+    let bestNameScore = 0;
 
-    for (const indexedItem of indexes) {
-      if (usedIds.has(indexedItem.item.id)) continue;
+    for (const indexedItem of usableIndexes) {
+      if (usedPlaylistIds.has(indexedItem.item.id)) continue;
 
-      const score = resolvePlaylistMatch(tmdbItem, indexedItem);
-      if (score > bestScore) {
-        bestScore = score;
+      const playlistImageId = indexedItem.tmdbId || getPlaylistItemTmdbImageId(indexedItem.item);
+      
+      // ID não bate - pula
+      if (!playlistImageId || tmdbImageId !== playlistImageId) {
+        continue;
+      }
+
+      // ID bateu! Se tem múltiplos matches (duplicatas), usa nome para desempate
+      const nameScore = scoreStrictNameMatch(tmdbItem, indexedItem);
+      
+      if (nameScore > bestNameScore || !bestMatch) {
+        bestNameScore = nameScore;
         bestMatch = indexedItem;
       }
     }
 
-    if (bestMatch && bestScore >= minScore) {
-      usedIds.add(bestMatch.item.id);
-      resolved.push(buildResolvedHomeItem({ ...bestMatch.item, __matchScore: bestScore }, tmdbItem));
+    // Se achou por ID, usa a playlist item (com ou sem name match perfeito)
+    if (bestMatch) {
+      usedPlaylistIds.add(bestMatch.item.id);
+      const resolvedItem = buildResolvedHomeItem({ ...bestMatch.item, __matchScore: 100 }, tmdbItem);
+      if (resolvedItem) {
+        resolved.push(resolvedItem);
+      }
+      continue;
+    }
+
+    // Nenhum match por ID - usa TMDB only
+    const tmdbOnlyItem = buildResolvedHomeItem(tmdbItem, tmdbItem);
+    if (tmdbOnlyItem) {
+      resolved.push(tmdbOnlyItem);
     }
   }
 
   return resolved;
+};
+
+const buildPlaylistSpotlightFallback = (items = []) => {
+  const spotlightMap = new Map();
+
+  for (const item of Array.isArray(items) ? items : []) {
+    if (!hasPlaylistContentUrl(item)) continue;
+    const resolvedItem = buildResolvedHomeItem(item);
+    if (!resolvedItem) continue;
+    addBestSpotlightItem(spotlightMap, resolvedItem);
+  }
+
+  return sortSpotlightEntries(Array.from(spotlightMap.values())).map((entry) => entry.item);
 };
 
 const fillSpotlightItems = ({ resolvedItems = [], targetCount = 0, excludeKeys = new Set(), preferTypes = [] }) => {
@@ -708,7 +904,7 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
   const visibleLiveChannels = liveChannels;
   const userMovies = getMovies();
   const userSeries = getSeries();
-  const spotlightCacheKey = `${activePlaylistId}|m:${userMovies.length}|s:${userSeries.length}`;
+  const spotlightCacheKey = `playable-v2|${activePlaylistId}|m:${userMovies.length}|s:${userSeries.length}`;
 
   useEffect(() => {
     let isCancelled = false;
@@ -748,8 +944,8 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
         seriesLimit = Math.min(userSeries.length, remainingSlots);
       }
 
-      const moviesSource = userMovies.slice(0, movieLimit);
-      const seriesSource = userSeries.slice(0, seriesLimit);
+      const moviesSource = takeEvenlySpacedItems(userMovies, movieLimit);
+      const seriesSource = takeEvenlySpacedItems(userSeries, seriesLimit);
 
       const moviesIndex = [];
       for (let start = 0; start < moviesSource.length; start += HOME_INDEX_BATCH_SIZE) {
@@ -845,14 +1041,17 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
 
         const movieMatches = resolveTmdbItemsWithPlaylist({
           tmdbItems: weeklyMovies.slice(0, 80),
-          indexes: searchIndexes.moviesIndex,
-          minScore: 92
+          indexes: searchIndexes.moviesIndex
         });
 
         const seriesMatches = resolveTmdbItemsWithPlaylist({
           tmdbItems: weeklySeries.slice(0, 80),
-          indexes: searchIndexes.seriesIndex,
-          minScore: 88
+          indexes: searchIndexes.seriesIndex
+        });
+
+        const apiHeroMatches = resolveTmdbItemsWithPlaylist({
+          tmdbItems: Array.isArray(apiHeroItems) ? apiHeroItems : [],
+          indexes: searchIndexes.allIndex
         });
 
         const weeklyMatches = mixSpotlightItems({
@@ -866,22 +1065,16 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
           preferTypes: ['movie', 'series']
         });
 
-        const heroFallbackPool = Array.isArray(apiHeroItems)
-          ? apiHeroItems.filter((item) => normalizeTmdbType(item?.type) !== 'other')
-          : [];
-
-        const weeklyFallbackPool = weeklyList.filter((item) => normalizeTmdbType(item?.type) !== 'other');
-
         const heroItems = selectHeroItems({
-          preferred: heroFromMatches,
-          fallback: [...heroFallbackPool, ...weeklyFallbackPool],
+          preferred: [...heroFromMatches, ...apiHeroMatches],
+          fallback: [],
           targetCount: 5
         });
 
         const heroKeys = new Set(heroItems.map((item) => getHomeSpotlightKey(item)).filter(Boolean));
 
         const matchedCandidates = mixSpotlightItems({
-          items: [...weeklyMatches, ...weeklyFallbackPool],
+          items: weeklyMatches,
           targetCount: 80
         });
 
