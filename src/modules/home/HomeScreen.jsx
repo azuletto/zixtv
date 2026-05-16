@@ -8,6 +8,158 @@ import WelcomeScreen from './components/WelcomeScreen';
 import HeroBanner from './components/HeroBanner';
 import CategoryRow from './components/CategoryRow';
 
+// ============================================================================
+// NAME SIMILARITY AND MATCHING FUNCTIONS
+// ============================================================================
+
+/**
+ * Remove metadata entre parênteses e colchetes
+ * Ex: "Filme (2023) [1080p]" -> "Filme"
+ */
+const removeMetadataFromName = (name = '') => {
+  return String(name || '')
+    .replace(/\[[^\]]*\]/g, ' ')    // Remove [...]
+    .replace(/\([^)]*\)/g, ' ')     // Remove (...)
+    .replace(/\s+/g, ' ')           // Normaliza espaços múltiplos
+    .trim();
+};
+
+/**
+ * Normaliza nome para comparação:
+ * - Lowercase
+ * - Remove acentos
+ * - Remove caracteres especiais
+ * - Remove espaços múltiplos
+ */
+const normalizeNameForComparison = (name = '') => {
+  const cleaned = removeMetadataFromName(name);
+  return cleaned
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')  // Remove acentos e diacríticos
+    .replace(/[^a-z0-9\s]/g, ' ')    // Apenas alfanumérico e espaço
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+/**
+ * Calcula distância de Levenshtein entre duas strings
+ * Retorna o número de edições necessárias
+ */
+const levenshteinDistance = (str1, str2) => {
+  const len1 = str1.length;
+  const len2 = str2.length;
+  const matrix = Array(len2 + 1)
+    .fill(null)
+    .map(() => Array(len1 + 1).fill(0));
+
+  for (let i = 0; i <= len1; i++) matrix[0][i] = i;
+  for (let j = 0; j <= len2; j++) matrix[j][0] = j;
+
+  for (let j = 1; j <= len2; j++) {
+    for (let i = 1; i <= len1; i++) {
+      const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+      matrix[j][i] = Math.min(
+        matrix[j][i - 1] + 1,     // delete
+        matrix[j - 1][i] + 1,     // insert
+        matrix[j - 1][i - 1] + indicator // replace
+      );
+    }
+  }
+
+  return matrix[len2][len1];
+};
+
+/**
+ * Calcula similaridade entre dois nomes (0-100%)
+ * Usa Levenshtein distance normalizado
+ */
+const calculateNameSimilarity = (name1 = '', name2 = '') => {
+  const norm1 = normalizeNameForComparison(name1);
+  const norm2 = normalizeNameForComparison(name2);
+
+  if (!norm1 || !norm2) return 0;
+  if (norm1 === norm2) return 100;
+
+  const maxLen = Math.max(norm1.length, norm2.length);
+  const distance = levenshteinDistance(norm1, norm2);
+  const similarity = ((maxLen - distance) / maxLen) * 100;
+
+  return Math.max(0, similarity);
+};
+
+/**
+ * Verifica se TMDB item bate com playlist item por nome (mínimo 95% similitude)
+ */
+const matchesByNameSimilarity = (tmdbItem, playlistItem, minSimilarity = 95) => {
+  const tmdbNames = [
+    tmdbItem.title,
+    tmdbItem.name,
+    tmdbItem.original_title,
+    tmdbItem.original_name
+  ].filter(Boolean);
+
+  const playlistNames = [
+    playlistItem.name,
+    playlistItem.title,
+    playlistItem.seriesName,
+    playlistItem.metadata?.title
+  ].filter(Boolean);
+
+  for (const tmdbName of tmdbNames) {
+    for (const playlistName of playlistNames) {
+      const similarity = calculateNameSimilarity(tmdbName, playlistName);
+      if (similarity >= minSimilarity) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+
+/**
+ * Encontra melhor match por nome na playlist
+ * Retorna o item com maior similaridade
+ */
+const findBestPlaylistMatch = (tmdbItem, playlistItems = [], minSimilarity = 95) => {
+  let bestMatch = null;
+  let bestScore = 0;
+
+  const tmdbNames = [
+    tmdbItem.title,
+    tmdbItem.name,
+    tmdbItem.original_title,
+    tmdbItem.original_name
+  ].filter(Boolean);
+
+  for (const playlistItem of playlistItems) {
+    const playlistNames = [
+      playlistItem.name,
+      playlistItem.title,
+      playlistItem.seriesName,
+      playlistItem.metadata?.title
+    ].filter(Boolean);
+
+    for (const tmdbName of tmdbNames) {
+      for (const playlistName of playlistNames) {
+        const similarity = calculateNameSimilarity(tmdbName, playlistName);
+
+        if (similarity >= minSimilarity && similarity > bestScore) {
+          bestScore = similarity;
+          bestMatch = playlistItem;
+        }
+      }
+    }
+  }
+
+  return bestMatch;
+};
+
+// ============================================================================
+// END NAME SIMILARITY AND MATCHING FUNCTIONS
+// ============================================================================
+
 const EmptyStateScreen = () => (
   <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
     <div className="absolute inset-0">
@@ -69,14 +221,19 @@ const extractTMDBIdFromUrl = (url = '') => {
   const raw = String(url || '').trim();
   if (!raw) return null;
 
-  const match = raw.match(/\/([^/]+)\.(?:jpg|jpeg|png|webp)(?:\?.*)?$/i);
-  if (match) return match[1];
+  // Remove query parameters e fragments
+  const cleanUrl = raw.split('?')[0].split('#')[0];
 
-  const filename = raw.split('/').pop();
-  if (!filename) return null;
+  // Padrão: extrai o último segmento antes da extensão
+  // Ex: /w600_and_h900_bestv2/wfgTBwDefAPbnflDAUZenkKBUrX.jpg -> wfgTBwDefAPbnflDAUZenkKBUrX
+  const match = cleanUrl.match(/\/([a-zA-Z0-9_-]+)\.(?:jpg|jpeg|png|webp)$/i);
+  if (match && match[1]) {
+    const id = match[1];
+    // ID do TMDB geralmente tem um padrão, verifica se não é algo genérico
+    if (id.length >= 8) return id;
+  }
 
-  const id = filename.replace(/\.(jpg|jpeg|png|webp)$/i, '');
-  return id || null;
+  return null;
 };
 
 const escapeRegExp = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -544,7 +701,7 @@ const createSearchIndexEntry = (item) => ({
   item,
   aliases: extractSearchAliases(item),
   nameParts: getPlaylistTitleNames(item),
-  tmdbId: item.tmdbImageId || item.tvg?.tmdbImageId || extractTMDBIdFromUrl(item.tvg?.logo || item.logo || item.posterUrl || item.backdropUrl)
+  tmdbId: item.tmdbImageId || item.tvg?.tmdbImageId || getPlaylistItemTmdbImageId(item)
 });
 
 const interleaveIndexes = (moviesIndex = [], seriesIndex = []) => {
@@ -641,17 +798,23 @@ const scoreIndexMatch = (tmdbItem, indexedItem) => {
 const buildResolvedHomeItem = (playlistItem, tmdbItem = null) => {
   if (!playlistItem) return null;
 
+  // Prioriza nome do TMDB se disponível, senão usa da playlist
   const title = tmdbItem?.title || tmdbItem?.name || playlistItem.name || playlistItem.title || playlistItem.seriesName || '';
-  const posterUrl = playlistItem.tvg?.logo || playlistItem.logo || tmdbItem?.posterUrl || null;
-  const backdropUrl = tmdbItem?.backdropUrl || tmdbItem?.posterUrl || playlistItem.tvg?.logo || playlistItem.logo || null;
+  
+  // Prioriza capa do TMDB (que foi usado para o match), depois playlist
+  const posterUrl = tmdbItem?.posterUrl || playlistItem.tvg?.logo || playlistItem.logo || null;
+  
+  // Backdrop sempre vem do TMDB se disponível
+  const backdropUrl = tmdbItem?.backdropUrl || posterUrl || null;
 
-  // URL real do conteúdo vindo da playlist, quando existir
+  // URL do stream SEMPRE vem da playlist (obrigatório)
   const streamUrl = getPlaylistContentUrl(playlistItem);
 
   return {
     ...playlistItem,
     name: title,
     title,
+    displayTitle: title,
     posterUrl,
     backdropUrl,
     url: streamUrl,
@@ -669,18 +832,30 @@ const buildResolvedHomeItem = (playlistItem, tmdbItem = null) => {
       playlistItem.metadata?.plot ||
       '',
     year: tmdbItem?.year || playlistItem.year,
+    type: playlistItem.type || tmdbItem?.type,
     prefetchedTMDBData: tmdbItem,
     tmdbData: tmdbItem,
-    playlistItem: hasPlaylistContentUrl(playlistItem) ? playlistItem : null,
-    userItem: hasPlaylistContentUrl(playlistItem) ? playlistItem : null,
+    playlistItem: playlistItem,
+    userItem: playlistItem,
     userType: normalizePlaylistType(playlistItem.type),
-    source: tmdbItem ? (hasPlaylistContentUrl(playlistItem) ? 'tmdb-match' : 'tmdb-only') : 'playlist-fallback'
+    source: 'tmdb-match'
   };
 };
 
 const getPlaylistItemTmdbImageId = (item = {}) => {
+  // Tenta extrair do logo/capa primeiro
   const posterUrl = item.tvg?.logo || item.logo || item.posterUrl || item.backdropUrl || '';
-  return extractTMDBIdFromUrl(posterUrl);
+  const id = extractTMDBIdFromUrl(posterUrl);
+  
+  if (id) return id;
+  
+  // Fallback: se tem tvg-id que parece ser TMDB, usa direto
+  const tvgId = item.tvg?.id || item.tvgId || '';
+  if (tvgId && /^[a-zA-Z0-9_-]{8,}$/.test(tvgId)) {
+    return tvgId;
+  }
+  
+  return null;
 };
 
 const resolvePlaylistMatch = (tmdbItem, indexedItem) => {
@@ -736,60 +911,78 @@ const resolvePlaylistMatch = (tmdbItem, indexedItem) => {
   return containsStrong ? 86 : 0;
 };
 
-const resolveTmdbItemsWithPlaylist = ({ tmdbItems = [], indexes = [] }) => {
+const resolveTmdbItemsWithPlaylist = ({ tmdbItems = [], playlistItemsByType = {} }) => {
   const resolved = [];
   const usedPlaylistIds = new Set();
-  const usableIndexes = indexes.filter((indexedItem) => hasPlaylistContentUrl(indexedItem.item));
+
+  const buildExactIndex = (items) => {
+    const index = new Map();
+    for (const item of items) {
+      if (!hasPlaylistContentUrl(item)) continue;
+      for (const name of [item.name, item.title, item.seriesName, item.metadata?.title].filter(Boolean)) {
+        const normalized = normalizeNameForComparison(name);
+        if (normalized && !index.has(normalized)) index.set(normalized, item);
+      }
+    }
+    return index;
+  };
+
+  const moviesIndex = buildExactIndex(playlistItemsByType.movies || []);
+  const seriesIndex = buildExactIndex(playlistItemsByType.series || []);
 
   for (const tmdbItem of tmdbItems) {
-    const tmdbImageId = tmdbItem.posterId || extractTMDBIdFromUrl(tmdbItem.posterUrl || tmdbItem.poster_path || tmdbItem.posterPath || tmdbItem.backdropUrl || '');
+    const tmdbType = normalizeTmdbType(tmdbItem.type);
+    const nameIndex = tmdbType === 'movie' ? moviesIndex : seriesIndex;
+    if (nameIndex.size === 0) continue;
 
-    // Se não tem ID de imagem, não consegue linkar com segurança - usa TMDB only
-    if (!tmdbImageId) {
-      const tmdbOnlyItem = buildResolvedHomeItem(tmdbItem, tmdbItem);
-      if (tmdbOnlyItem) {
-        resolved.push(tmdbOnlyItem);
-      }
-      continue;
-    }
+    const tmdbNames = [
+      tmdbItem.title,
+      tmdbItem.name,
+      tmdbItem.original_title,
+      tmdbItem.original_name
+    ].filter(Boolean);
 
-    // Procura na playlist por ID matching
     let bestMatch = null;
-    let bestNameScore = 0;
+    let bestScore = 0;
 
-    for (const indexedItem of usableIndexes) {
-      if (usedPlaylistIds.has(indexedItem.item.id)) continue;
+    for (const tmdbName of tmdbNames) {
+      const normalizedTmdb = normalizeNameForComparison(tmdbName);
+      if (!normalizedTmdb) continue;
 
-      const playlistImageId = indexedItem.tmdbId || getPlaylistItemTmdbImageId(indexedItem.item);
-      
-      // ID não bate - pula
-      if (!playlistImageId || tmdbImageId !== playlistImageId) {
-        continue;
+      const exact = nameIndex.get(normalizedTmdb);
+      if (exact) {
+        const id = exact.item?.id || exact.id;
+        if (!usedPlaylistIds.has(id)) {
+          bestMatch = exact;
+          bestScore = 100;
+          break;
+        }
       }
 
-      // ID bateu! Se tem múltiplos matches (duplicatas), usa nome para desempate
-      const nameScore = scoreStrictNameMatch(tmdbItem, indexedItem);
-      
-      if (nameScore > bestNameScore || !bestMatch) {
-        bestNameScore = nameScore;
-        bestMatch = indexedItem;
+      if (!bestMatch) {
+        const tmdbLen = normalizedTmdb.length;
+        for (const [normalizedPlaylistName, playlistItem] of nameIndex) {
+          const id = playlistItem.item?.id || playlistItem.id;
+          if (usedPlaylistIds.has(id)) continue;
+          const lenDiff = Math.abs(normalizedPlaylistName.length - tmdbLen);
+          if (lenDiff > Math.max(1, Math.floor(tmdbLen * 0.05))) continue;
+          const maxLen = Math.max(tmdbLen, normalizedPlaylistName.length);
+          const distance = levenshteinDistance(normalizedTmdb, normalizedPlaylistName);
+          const similarity = ((maxLen - distance) / maxLen) * 100;
+          if (similarity >= 95 && similarity > bestScore) {
+            bestScore = similarity;
+            bestMatch = playlistItem;
+            if (bestScore >= 100) break;
+          }
+        }
+        if (bestMatch) break;
       }
     }
 
-    // Se achou por ID, usa a playlist item (com ou sem name match perfeito)
-    if (bestMatch) {
-      usedPlaylistIds.add(bestMatch.item.id);
-      const resolvedItem = buildResolvedHomeItem({ ...bestMatch.item, __matchScore: 100 }, tmdbItem);
-      if (resolvedItem) {
-        resolved.push(resolvedItem);
-      }
-      continue;
-    }
-
-    // Nenhum match por ID - usa TMDB only
-    const tmdbOnlyItem = buildResolvedHomeItem(tmdbItem, tmdbItem);
-    if (tmdbOnlyItem) {
-      resolved.push(tmdbOnlyItem);
+    if (bestMatch && bestScore >= 95) {
+      usedPlaylistIds.add(bestMatch.item?.id || bestMatch.id);
+      const resolvedItem = buildResolvedHomeItem(bestMatch, tmdbItem);
+      if (resolvedItem) resolved.push(resolvedItem);
     }
   }
 
@@ -1041,17 +1234,26 @@ const HomeScreen = ({ sidebarWidth = 0, isSidebarCollapsed = false }) => {
 
         const movieMatches = resolveTmdbItemsWithPlaylist({
           tmdbItems: weeklyMovies.slice(0, 80),
-          indexes: searchIndexes.moviesIndex
+          playlistItemsByType: {
+            movies: userMovies,
+            series: []
+          }
         });
 
         const seriesMatches = resolveTmdbItemsWithPlaylist({
           tmdbItems: weeklySeries.slice(0, 80),
-          indexes: searchIndexes.seriesIndex
+          playlistItemsByType: {
+            movies: [],
+            series: userSeries
+          }
         });
 
         const apiHeroMatches = resolveTmdbItemsWithPlaylist({
           tmdbItems: Array.isArray(apiHeroItems) ? apiHeroItems : [],
-          indexes: searchIndexes.allIndex
+          playlistItemsByType: {
+            movies: userMovies,
+            series: userSeries
+          }
         });
 
         const weeklyMatches = mixSpotlightItems({

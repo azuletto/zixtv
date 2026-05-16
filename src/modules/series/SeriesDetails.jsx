@@ -5,7 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import EpisodeList from './EpisodeList';
 import CustomPlayer from '../player/CustomPlayer';
 import { tmdbService } from '../../core/services/tmdb/TMDBService';
+import { StorageService } from '../../core/services/storage/StorageService';
 import { resolveMediaUrl } from '../../core/services/network/proxy';
+
+const storageService = new StorageService();
 const normalizeDescription = (value, fallback = 'Descrição não disponível') => {
   const raw = String(value || '').trim();
   if (!raw) return fallback;
@@ -37,6 +40,7 @@ const SeriesDetails = ({ series }) => {
   const [isFetchingTMDB, setIsFetchingTMDB] = useState(false);
   const [selectedEpisode, setSelectedEpisode] = useState(null);
   const [showPlayer, setShowPlayer] = useState(false);
+  const [selectedSeason, setSelectedSeason] = useState(1);
 
   const seriesName = series?.name || series?.title || series?.seriesName || 'Série';
   const seriesCacheKey = useMemo(() => seriesName.toLowerCase().trim(), [seriesName]);
@@ -117,6 +121,46 @@ const SeriesDetails = ({ series }) => {
       }));
   }, [series?.episodes, tmdbData]);
 
+  const availableSeasons = useMemo(() => {
+    const seasons = new Set(orderedEpisodes.map((ep) => ep.season || 1));
+    return Array.from(seasons).sort((a, b) => a - b);
+  }, [orderedEpisodes]);
+
+  const filteredEpisodes = useMemo(() => {
+    if (!selectedSeason) return orderedEpisodes;
+    return orderedEpisodes
+      .filter((ep) => (ep.season || 1) === selectedSeason)
+      .map((ep) => ({ ...ep, sequence: null }));
+  }, [orderedEpisodes, selectedSeason]);
+
+  useEffect(() => {
+    if (orderedEpisodes.length === 0) return;
+
+    const loadLastSeason = async () => {
+      try {
+        const history = await storageService.getWatchHistory();
+        const seriesHistory = history.filter((entry) => {
+          if (entry.type !== 'series') return false;
+          if (entry.title?.toLowerCase() === seriesName.toLowerCase()) return true;
+          return orderedEpisodes.some((ep) => ep.url === entry.source);
+        });
+
+        if (seriesHistory.length > 0) {
+          const last = seriesHistory[0];
+          if (last.season && availableSeasons.includes(last.season)) {
+            setSelectedSeason(last.season);
+            return;
+          }
+        }
+      } catch (e) {
+        // history unavailable, keep default
+      }
+      setSelectedSeason(1);
+    };
+
+    loadLastSeason();
+  }, [orderedEpisodes.length, seriesName]);
+
   const seasonsCount = useMemo(() => {
     const unique = new Set(orderedEpisodes.map((ep) => ep.season || 0));
     return unique.size || 1;
@@ -187,15 +231,42 @@ const SeriesDetails = ({ series }) => {
         </div>
       </div>
 
-      <div className="px-6 md:px-12 py-8">
-        <h2 className="text-2xl font-bold text-white mb-6">Episódios em sequência</h2>
-        <EpisodeList
-          episodes={orderedEpisodes}
-          onSelectEpisode={handleEpisodeSelect}
-        />
+      <div className="px-6 md:px-12 py-8 space-y-6">
+        <div>
+          <h3 className="text-sm font-medium text-zinc-400 mb-3 uppercase tracking-wider">Temporadas</h3>
+          {availableSeasons.length > 1 ? (
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
+              {availableSeasons.map((season) => (
+                <button
+                  key={season}
+                  onClick={() => setSelectedSeason(season)}
+                  className={`flex-none px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+                    selectedSeason === season
+                      ? 'bg-red-600 text-white shadow-lg shadow-red-600/25'
+                      : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white'
+                  }`}
+                >
+                  Temporada {season}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-zinc-500">1 temporada</p>
+          )}
+        </div>
+
+        <div>
+          <h3 className="text-lg font-bold text-white mb-4">
+            Episódios{selectedSeason ? ` — Temporada ${selectedSeason}` : ''}
+          </h3>
+          <EpisodeList
+            episodes={filteredEpisodes}
+            onSelectEpisode={handleEpisodeSelect}
+          />
+        </div>
       </div>
 
-      {}
+      
       <AnimatePresence>
         {showPlayer && selectedEpisode && (
           <motion.div
